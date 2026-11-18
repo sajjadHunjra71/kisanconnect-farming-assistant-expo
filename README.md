@@ -4,6 +4,8 @@ Smart farming assistant for farmers in Punjab, Pakistan. Built with Expo (React 
 
 > Status: **UI phase.** All screens are built and use clearly labelled sample data. Backend (Supabase), sign-in and AI arrive in the next phases. See [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md).
 
+![KisanConnect screens: welcome, home, scan, Urdu home, dark mode](docs/screenshots/preview.png)
+
 ## Features (planned, UI ready)
 - **Today**: weather for your farm, crop stage, tasks and advice.
 - **Weather intelligence**: hourly + 7-day forecast, spray window, irrigation advice (FAO-56), alerts.
@@ -12,14 +14,32 @@ Smart farming assistant for farmers in Punjab, Pakistan. Built with Expo (React 
 - **Mandi rates** with a visible rate date, **expert questions**, **farm management**.
 - **English + Urdu**, switch with one tap in Settings (RTL supported). Light, dark and auto themes.
 
+## Tech stack
+Expo SDK 58 · React Native 0.88 · TypeScript (strict) · Expo Router · Zustand · i18next · Reanimated · react-native-svg.
+Planned: Supabase (Auth, Postgres, Storage, Edge Functions), Open-Meteo, on-device TFLite + Gemini (free tier).
+
 ## Run
 ```bash
 npm install
-cp .env.example .env      # fill later; app runs without it
-npx expo run:ios          # or: npx expo run:android  (development build)
-npx expo start --web      # quick look in the browser
+cp .env.example .env      # optional for now; the UI runs without it
+npx expo start            # open in Expo Go (iOS simulator: press i)
 npm run typecheck
 ```
+Native development builds (`npx expo run:ios` / `run:android`) are needed from Phase 1 (Google Sign-In, camera, voice). With Xcode 26.0 the iOS dev build currently fails inside Expo SDK 58's `expo-modules-jsi`; update Xcode first.
+
+## Roadmap
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Foundation, design system, full UI | ✅ Done |
+| 1 | Auth (Google + email via Supabase), profile | Next |
+| 2 | Farm & crop management, offline sync | Planned |
+| 3 | Weather intelligence + push alerts | Planned |
+| 4 | Crop disease detection (on-device + AI second opinion) | Planned |
+| 5 | AI assistant + voice | Planned |
+| 6 | Irrigation & reminders | Planned |
+| 7 | Mandi prices | Planned |
+| 8 | Expert connection | Planned |
+| 9 | Hardening & release | Planned |
 
 ## Project structure
 ```
@@ -54,3 +74,6 @@ src/
 
 ## Secrets
 Only `EXPO_PUBLIC_*` values go in `.env` (they are bundled into the app). Server secrets such as the Gemini API key and Supabase service-role key live only in Supabase Edge Function secrets. `.env` is git-ignored.
+
+## License
+MIT © 2026 Sajjad Khalid
