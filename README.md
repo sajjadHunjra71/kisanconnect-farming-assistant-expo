@@ -1,0 +1,56 @@
+# KisanConnect
+
+Smart farming assistant for farmers in Punjab, Pakistan. Built with Expo (React Native) and TypeScript.
+
+> Status: **UI phase.** All screens are built and use clearly labelled sample data. Backend (Supabase), sign-in and AI arrive in the next phases. See [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md).
+
+## Features (planned, UI ready)
+- **Today**: weather for your farm, crop stage, tasks and advice.
+- **Weather intelligence**: hourly + 7-day forecast, spray window, irrigation advice (FAO-56), alerts.
+- **Leaf scan**: on-device disease model with a cloud second opinion. Always "possible", never "confirmed".
+- **Ask AI**: chat with text or voice that knows your crop, stage and weather.
+- **Mandi rates** with a visible rate date, **expert questions**, **farm management**.
+- **English + Urdu**, switch with one tap in Settings (RTL supported). Light, dark and auto themes.
+
+## Run
+```bash
+npm install
+cp .env.example .env      # fill later; app runs without it
+npx expo run:ios          # or: npx expo run:android  (development build)
+npx expo start --web      # quick look in the browser
+npm run typecheck
+```
+
+## Project structure
+```
+src/
+  app/                 Routes only (Expo Router)
+    (onboarding)/      welcome, language, farm-setup
+    (auth)/            sign-in, sign-up, forgot-password
+    (tabs)/            index (Home), weather, scan, assistant, farm
+    scan/result, mandi, expert/, settings
+  components/
+    ui/                Reusable primitives (Text, Button, Card, Chip, TextField, ...)
+    layout/            TabBar
+  features/<feature>/components   Feature-specific components
+  theme/               Palette, spacing/radius tokens, typography, ThemeProvider
+  i18n/                i18next setup, languages, locales/en.json + ur.json
+  hooks/               useDirection (RTL), useLocalized
+  store/               Zustand settings store (persisted)
+  config/env.ts        Public env (EXPO_PUBLIC_*) only
+  mocks/               Sample data for UI work (to be replaced)
+  types/               Domain types
+```
+
+## Design system
+- **Palette "field almanac"**: paper cream `#F6F2E9`, forest green `#1F5C3F`, wheat gold `#D9A13B`, terracotta `#B5532E` for risk, sky `#2F6F9F` for weather. Full dark palette included.
+- **Type**: Fraunces (display), Plus Jakarta Sans (UI), Noto Nastaliq Urdu (Urdu, with taller line height).
+- 48 dp minimum touch targets, high contrast, icons with every label, read-aloud planned on every answer.
+
+## Adding a language
+1. Add it to `src/i18n/languages.ts` (code, native name, `ltr`/`rtl`).
+2. Add `src/i18n/locales/<code>.json` with the same keys as `en.json`.
+3. Add the language to data `Localized` fields where needed.
+
+## Secrets
+Only `EXPO_PUBLIC_*` values go in `.env` (they are bundled into the app). Server secrets such as the Gemini API key and Supabase service-role key live only in Supabase Edge Function secrets. `.env` is git-ignored.
