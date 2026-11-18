@@ -17,6 +17,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useLanguageSync } from '@/i18n/use-language-sync';
+import { useAuthStore } from '@/store/auth-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { ThemeProvider, useTheme } from '@/theme';
 
@@ -25,12 +26,15 @@ void SplashScreen.preventAutoHideAsync();
 function RootStack() {
   const { colors, scheme } = useTheme();
   useLanguageSync();
+  useEffect(() => useAuthStore.getState().init(), []);
   return (
     <>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: 'slide_from_right' }}>
         <Stack.Screen name="scan/result" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="expert/ask" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="auth/callback" options={{ animation: 'fade', gestureEnabled: false }} />
+        <Stack.Screen name="auth/reset" options={{ animation: 'fade' }} />
       </Stack>
     </>
   );

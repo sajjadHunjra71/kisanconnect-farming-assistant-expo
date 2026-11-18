@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { PressableScale, Text } from '@/components/ui';
 import { useDirection } from '@/hooks/use-direction';
@@ -17,17 +17,19 @@ function GoogleMark() {
   );
 }
 
-export function GoogleButton({ onPress }: { onPress?: () => void }) {
+export function GoogleButton({ onPress, loading = false }: { onPress?: () => void; loading?: boolean }) {
   const { t } = useTranslation();
   const { colors, radius } = useTheme();
   const { row } = useDirection();
   return (
     <PressableScale
-      onPress={onPress}
+      onPress={loading ? undefined : onPress}
+      disabled={loading}
       accessibilityRole="button"
+      accessibilityState={{ busy: loading, disabled: loading }}
       accessibilityLabel={t('auth.google')}
       style={{ flexDirection: row, height: 56, alignItems: 'center', justifyContent: 'center', gap: 12, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceRaised }}>
-      <GoogleMark />
+      {loading ? <ActivityIndicator color={colors.primary} /> : <GoogleMark />}
       <Text variant="title">{t('auth.google')}</Text>
     </PressableScale>
   );

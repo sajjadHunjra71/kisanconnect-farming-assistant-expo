@@ -9,6 +9,15 @@
 - All data is **sample data** from `src/mocks` and every screen shows a "Sample data" badge.
 - No backend, auth or AI wired yet (waiting for Supabase project, Google OAuth IDs, Gemini key).
 
+## Phase 1: Login (code done, 18 Nov 2026; waiting for Supabase keys)
+- Supabase client (`src/lib/supabase.ts`) with PKCE, session in AsyncStorage, auto refresh only in foreground.
+- Google sign-in through the browser (Supabase OAuth + `expo-web-browser`), so it runs in Expo Go.
+- Email sign up (with confirmation email), sign in, forgot password, set new password from the email link.
+- Deep links: `kisanconnect://auth/callback` and `kisanconnect://auth/reset` (Expo Go uses `exp://…/--/auth/...`).
+- `profiles` table with Row Level Security, auto-created on sign up (`supabase/migrations`). Users can't change their own `role`.
+- `delete-account` Edge Function (service-role key stays on the server).
+- Login guard: signed-out users go to welcome / sign-in. Settings shows the signed-in email, sign out and delete account.
+- Without keys in `.env` the app runs in **demo mode** exactly like Phase 0.
+
 ## Next
-- Phase 1: Supabase Auth (Google + email), profile, secure session.
 - Phase 2: Farm + crop data in SQLite + Supabase sync.

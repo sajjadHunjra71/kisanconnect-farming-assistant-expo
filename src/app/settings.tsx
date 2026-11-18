@@ -1,16 +1,65 @@
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 
-import { Card, Divider, ListRow, Screen, ScreenHeader, SectionHeader, SegmentedControl, Text, Toggle } from '@/components/ui';
+import { Card, Divider, FormError, ListRow, Screen, ScreenHeader, SectionHeader, SegmentedControl, Text, Toggle } from '@/components/ui';
+import { deleteAccount, signOut } from '@/features/auth/auth-service';
+import { useAuthAction } from '@/features/auth/use-auth-action';
 import { LanguagePicker } from '@/features/settings/components';
+import { useAuthStore } from '@/store/auth-store';
 import { useSettingsStore, type ThemeMode, type Units } from '@/store/settings-store';
 import { useTheme } from '@/theme';
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
-  const { spacing } = useTheme();
+  const { spacing, colors } = useTheme();
+  const status = useAuthStore((s) => s.status);
+  const email = useAuthStore((s) => s.session?.user.email ?? null);
+  const { run, error } = useAuthAction();
+  const [busy, setBusy] = useState<'signOut' | 'delete' | null>(null);
+  const signedIn = status === 'signedIn';
+
+  const doSignOut = () =>
+    Alert.alert(t('settings.signOutConfirm'), undefined, [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.signOut'),
+        onPress: async () => {
+          setBusy('signOut');
+          const ok = await run(async () => {
+            await signOut();
+            return true;
+          });
+          setBusy(null);
+          if (ok) router.replace('/welcome');
+        },
+      },
+    ]);
+
+  const doDelete = () =>
+    Alert.alert(t('settings.deleteTitle'), t('settings.deleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.deleteConfirm'),
+        style: 'destructive',
+        onPress: async () => {
+          setBusy('delete');
+          const ok = await run(async () => {
+            await deleteAccount();
+            return true;
+          });
+          setBusy(null);
+          if (ok) {
+            resetOnboarding();
+            router.replace('/welcome');
+          }
+        },
+      },
+    ]);
+
+  const spinner = <ActivityIndicator color={colors.primary} />;
   const { themeMode, setThemeMode, units, setUnits, notifications, toggleNotification, resetOnboarding } = useSettingsStore();
 
   const notifRows = [
@@ -74,7 +123,14 @@ export default function SettingsScreen() {
 
       <View style={{ gap: spacing.md }}>
         <SectionHeader title={t('settings.account')} />
+        <FormError message={error} />
         <Card style={{ paddingVertical: spacing.xs }}>
+          <ListRow
+            icon={signedIn ? 'account-circle-outline' : 'account-off-outline'}
+            title={signedIn && email ? t('settings.signedInAs', { email }) : t('settings.demoMode')}
+            chevron={false}
+          />
+          <Divider inset={52} />
           <ListRow icon="shield-lock-outline" title={t('settings.privacy')} onPress={() => undefined} />
           <Divider inset={52} />
           <ListRow icon="information-outline" title={t('settings.about')} onPress={() => undefined} />
@@ -88,9 +144,23 @@ export default function SettingsScreen() {
             }}
           />
           <Divider inset={52} />
-          <ListRow icon="logout" title={t('settings.signOut')} onPress={() => undefined} chevron={false} />
-          <Divider inset={52} />
-          <ListRow icon="delete-outline" iconTone="dangerSoft" title={t('settings.deleteAccount')} destructive onPress={() => undefined} chevron={false} />
+          {signedIn ? (
+            <>
+              <ListRow icon="logout" title={t('settings.signOut')} onPress={busy ? undefined : doSignOut} chevron={false} trailing={busy === 'signOut' ? spinner : undefined} />
+              <Divider inset={52} />
+              <ListRow
+                icon="delete-outline"
+                iconTone="dangerSoft"
+                title={t('settings.deleteAccount')}
+                destructive
+                onPress={busy ? undefined : doDelete}
+                chevron={false}
+                trailing={busy === 'delete' ? spinner : undefined}
+              />
+            </>
+          ) : (
+            <ListRow icon="login" title={t('settings.signIn')} onPress={() => router.push('/sign-in')} />
+          )}
         </Card>
       </View>
 

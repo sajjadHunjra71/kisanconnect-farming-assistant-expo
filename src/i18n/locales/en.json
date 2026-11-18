@@ -69,7 +69,38 @@
     "resetBody": "Enter your email and we'll send you a reset link.",
     "sendLink": "Send reset link",
     "terms": "By continuing you agree to our Terms and Privacy Policy.",
-    "notConnected": "Sign-in will be connected when the backend is set up."
+    "notConnected": "Demo mode: add Supabase keys in .env to enable sign-in.",
+    "continueDemo": "Continue in demo mode",
+    "checkEmailTitle": "Check your email",
+    "checkEmailBody": "We sent a link to {{email}}. Open it on this phone to confirm your account.",
+    "resetSentBody": "If an account exists for {{email}}, a reset link is on its way.",
+    "backToSignIn": "Back to sign in",
+    "newPasswordTitle": "Set a new password",
+    "newPasswordBody": "Choose a password you haven't used before.",
+    "newPassword": "New password",
+    "savePassword": "Save password",
+    "passwordSaved": "Password updated. You're signed in.",
+    "finishing": "Signing you in…",
+    "linkFailed": "This link has expired or was already used. Please try again.",
+    "errors": {
+      "emailRequired": "Enter your email.",
+      "emailInvalid": "That email doesn't look right.",
+      "passwordRequired": "Enter your password.",
+      "passwordShort": "Use at least 8 characters.",
+      "passwordLong": "Use at most 72 characters.",
+      "passwordMismatch": "Passwords don't match.",
+      "nameRequired": "Enter your name.",
+      "nameLong": "Name is too long.",
+      "not_configured": "Sign-in isn't set up yet (missing Supabase keys).",
+      "invalid_credentials": "Wrong email or password.",
+      "email_not_confirmed": "Please confirm your email first. Check your inbox.",
+      "user_exists": "An account with this email already exists. Try signing in.",
+      "weak_password": "Password is too weak. Try a longer one.",
+      "rate_limited": "Too many tries. Please wait a minute.",
+      "network": "No internet connection. Please try again.",
+      "cancelled": "Sign-in was cancelled.",
+      "unknown": "Something went wrong. Please try again."
+    }
   },
   "home": {
     "greetingMorning": "Good morning",
@@ -222,6 +253,13 @@
     "signOut": "Sign out",
     "deleteAccount": "Delete account",
     "version": "Version {{version}}",
-    "replayOnboarding": "Show welcome screens again"
+    "replayOnboarding": "Show welcome screens again",
+    "signedInAs": "Signed in as {{email}}",
+    "demoMode": "Demo mode (not signed in)",
+    "signIn": "Sign in",
+    "deleteTitle": "Delete your account?",
+    "deleteBody": "Your profile and farm data will be permanently deleted. This can't be undone.",
+    "deleteConfirm": "Delete permanently",
+    "signOutConfirm": "Sign out of KisanConnect?"
   }
 }

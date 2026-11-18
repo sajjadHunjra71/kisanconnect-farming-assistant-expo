@@ -21,17 +21,17 @@ Planned: Supabase (Auth, Postgres, Storage, Edge Functions), Open-Meteo, on-devi
 ## Run
 ```bash
 npm install
-cp .env.example .env      # optional for now; the UI runs without it
+cp .env.example .env      # add Supabase URL + anon key; without them the app runs in demo mode
 npx expo start            # open in Expo Go (iOS simulator: press i)
 npm run typecheck
 ```
-Native development builds (`npx expo run:ios` / `run:android`) are needed from Phase 1 (Google Sign-In, camera, voice). With Xcode 26.0 the iOS dev build currently fails inside Expo SDK 58's `expo-modules-jsi`; update Xcode first.
+Google sign-in uses Supabase's browser flow (`expo-web-browser`), so login works in Expo Go with no native build. Backend setup (SQL, providers, Edge Function) is in [`supabase/README.md`](supabase/README.md). Native builds for later phases (camera, voice) will use EAS cloud builds.
 
 ## Roadmap
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Foundation, design system, full UI | ✅ Done |
-| 1 | Auth (Google + email via Supabase), profile | Next |
+| 1 | Auth (Google + email via Supabase), profile | ✅ Code done, needs Supabase keys |
 | 2 | Farm & crop management, offline sync | Planned |
 | 3 | Weather intelligence + push alerts | Planned |
 | 4 | Crop disease detection (on-device + AI second opinion) | Planned |
@@ -46,7 +46,8 @@ Native development builds (`npx expo run:ios` / `run:android`) are needed from P
 src/
   app/                 Routes only (Expo Router)
     (onboarding)/      welcome, language, farm-setup
-    (auth)/            sign-in, sign-up, forgot-password
+    (auth)/            sign-in, sign-up, forgot-password, check-email
+    auth/              callback, reset (deep-link targets for email links + Google)
     (tabs)/            index (Home), weather, scan, assistant, farm
     scan/result, mandi, expert/, settings
   components/

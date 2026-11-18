@@ -8,9 +8,11 @@ import { PriceCard } from '@/features/mandi/components';
 import { AdvisoryCard } from '@/features/weather/components';
 import { useLocalized } from '@/hooks/use-localized';
 import { sampleAdvisories, sampleFarm, sampleMandi, sampleTasks, sampleUser, sampleWeatherNow } from '@/mocks/sample-data';
+import { selectDisplayName, useAuthStore } from '@/store/auth-store';
 import { useTheme } from '@/theme';
 
 export default function HomeScreen() {
+  const displayName = useAuthStore(selectDisplayName);
   const { t } = useTranslation();
   const { spacing } = useTheme();
   const l = useLocalized();
@@ -18,7 +20,7 @@ export default function HomeScreen() {
 
   return (
     <Screen withTabBar>
-      <GreetingHeader name={sampleUser.name} location={l(sampleFarm.district)} />
+      <GreetingHeader name={displayName ?? sampleUser.name} location={l(sampleFarm.district)} />
       <SampleDataNotice />
       <WeatherHero weather={sampleWeatherNow} onPress={() => router.push('/(tabs)/weather')} />
       <QuickActions />
