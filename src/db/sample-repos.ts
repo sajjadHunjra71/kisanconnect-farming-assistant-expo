@@ -53,5 +53,5 @@ function seed(): Partial<Record<'farms' | 'crops', Row[]>> {
 
 export function createSampleRepos(): Repos {
   const store = createMemoryStore(seed());
-  return { kind: 'sample', ...createRepos(store, { userId: DEMO_USER_ID, newId: demoId }) };
+  return { kind: 'sample', ...createRepos(store, { userId: DEMO_USER_ID, newId: demoId, emitWrites: true }) };
 }

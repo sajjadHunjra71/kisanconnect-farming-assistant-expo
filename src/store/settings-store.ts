@@ -12,6 +12,9 @@ type SettingsState = {
   themeMode: ThemeMode;
   units: Units;
   hasOnboarded: boolean;
+  /** Farm shown on the Farm tab when there are several. */
+  selectedFarmId: string | null;
+  setSelectedFarmId: (id: string | null) => void;
   notifications: { weather: boolean; reminders: boolean; mandi: boolean; expert: boolean };
   hydrated: boolean;
   setLanguage: (language: LanguageCode) => void;
@@ -29,6 +32,8 @@ export const useSettingsStore = create<SettingsState>()(
       themeMode: 'system',
       units: 'acre',
       hasOnboarded: false,
+      selectedFarmId: null,
+      setSelectedFarmId: (selectedFarmId) => set({ selectedFarmId }),
       notifications: { weather: true, reminders: true, mandi: false, expert: true },
       hydrated: false,
       setLanguage: (language) => set({ language }),

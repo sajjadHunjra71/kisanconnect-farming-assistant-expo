@@ -9,6 +9,7 @@ import { AppState } from 'react-native';
 import { closeRepos, deleteUserDatabase, openRepos } from '@/db';
 import { onLocalWrite } from '@/db/events';
 import { supabase } from '@/lib/supabase';
+import { useDataVersion } from '@/store/data-version';
 import { useSyncStore } from '@/store/sync-store';
 
 import { classifyError } from './errors';
@@ -96,7 +97,10 @@ async function runOnce(mode: Mode) {
     store().set({ lastError: err.message });
     if (err.kind === 'retry') scheduleRetry();
   } finally {
-    if (a === active) store().set({ status: online ? 'synced' : 'offline' }); // recomputed by refreshStats
+    if (a === active) {
+      store().set({ status: online ? 'synced' : 'offline' }); // recomputed by refreshStats
+      useDataVersion.getState().bump();
+    }
     await refreshStats().catch(() => undefined);
   }
 }

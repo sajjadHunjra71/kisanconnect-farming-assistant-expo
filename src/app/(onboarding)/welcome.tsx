@@ -8,6 +8,7 @@ import { SvgXml } from 'react-native-svg';
 import { LOGO_MARK } from '@/components/brand/art';
 import { Button, Text } from '@/components/ui';
 import { FieldIllustration } from '@/features/onboarding/components';
+import { SessionLossBanner } from '@/features/sync/components';
 import { useDirection } from '@/hooks/use-direction';
 import { useTheme } from '@/theme';
 
@@ -37,6 +38,7 @@ export default function WelcomeScreen() {
           </Text>
         </Animated.View>
         <Animated.View entering={FadeInDown.duration(500).delay(250)} style={{ gap: spacing.sm }}>
+          <SessionLossBanner />
           <Button label={t('onboarding.getStarted')} icon="arrow-right" iconPosition="end" onPress={() => router.push('/language')} />
           <Button label={t('onboarding.haveAccount')} variant="ghost" onPress={() => router.push('/sign-in')} />
         </Animated.View>

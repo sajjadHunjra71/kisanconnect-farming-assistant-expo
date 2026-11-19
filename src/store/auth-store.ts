@@ -13,6 +13,7 @@ export type Profile = {
   district: string | null;
   language: string;
   role: 'farmer' | 'expert' | 'admin';
+  units: 'acre' | 'kanal' | 'hectare';
 };
 
 type AuthState = {
@@ -56,7 +57,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loadProfile: async () => {
     const userId = get().session?.user.id;
     if (!supabase || !userId) return;
-    const { data } = await supabase.from('profiles').select('id, full_name, avatar_url, district, language, role').eq('id', userId).maybeSingle();
+    const { data } = await supabase.from('profiles').select('id, full_name, avatar_url, district, language, role, units').eq('id', userId).maybeSingle();
     if (data) set({ profile: data as Profile });
   },
 }));

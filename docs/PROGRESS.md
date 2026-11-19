@@ -45,5 +45,11 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - Tests: 45 (23 new for sync: coalesced create, CAS conflict, lost responses, error classes, parent blocking, in-flight rebase, pull keyset/overlap/version rule/protection, 90-day re-download). iOS bundle exports cleanly.
 - Not yet: run against a real Supabase project; farm/crop/activity screens still read sample data (2C).
 
+## Phase 2C: Farms (code done, 20 Nov 2026)
+- Farm tab reads real farms (`useRepoQuery` re-queries after local writes and every sync run). Several farms → chip switcher; the chosen farm is remembered. No farms → "Add your first farm". Demo mode still shows the sample farm.
+- Add / edit farm (`/farm/edit?id=`): name, area + acre/kanal/hectare (default from the profile's `units`), location by GPS (permission → balanced fix → reverse geocode → matched to one of 36 Punjab districts by name/alias, else nearest centre within 60 km; lat/lng rounded to 2 dp) or a searchable district list (district centre). Permission denied / no fix / outside Punjab → the list opens with a short message. Soil chips, notes, inline errors. Delete asks first and removes crops and activity log too.
+- Onboarding farm setup now asks farm name + area and saves a real farm (and crop, from "sown about…") for signed-in users; demo mode skips saving.
+- Session-loss banner also on Welcome. "Updated from another device" tag on the farm card.
+
 ## Next
-- Phase 2C: wire farm / crop / activity screens to the repos.
+- Phase 2D: crops. Phase 2E: activity log.

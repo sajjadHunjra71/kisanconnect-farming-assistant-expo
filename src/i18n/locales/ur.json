@@ -42,9 +42,11 @@
       "twoMonths": "تقریباً 2 مہینے پہلے",
       "notYet": "ابھی بوائی نہیں ہوئی"
     },
-    "area": "کھیت کا رقبہ",
+    "area": "Farm area",
     "finish": "کسان کنیکٹ استعمال کریں",
-    "step": "مرحلہ {{current}} از {{total}}"
+    "step": "مرحلہ {{current}} از {{total}}",
+    "farmName": "Farm name",
+    "defaultFarmName": "My farm"
   },
   "auth": {
     "signInTitle": "خوش آمدید",
@@ -209,13 +211,74 @@
     "crops": "فصلیں",
     "addCrop": "فصل شامل کریں",
     "soil": "زمین",
-    "area": "رقبہ",
+    "area": "Area",
     "district": "ضلع",
     "sown": "{{count}} دن پہلے بوائی",
     "expert": "ماہر کی مدد",
     "expertBody": "زرعی ماہرین کو تصویریں اور وائس نوٹ بھیجیں۔",
     "settings": "سیٹنگز",
-    "activity": "کاموں کا ریکارڈ"
+    "activity": "کاموں کا ریکارڈ",
+    "addFarm": "Add farm",
+    "editFarm": "Edit farm",
+    "yourFarms": "Your farms",
+    "emptyTitle": "Add your first farm",
+    "emptyBody": "Add your land to track crops, irrigation and costs.",
+    "noDistrict": "No district",
+    "unitNames": {
+      "acre": "Acre",
+      "kanal": "Kanal",
+      "hectare": "Hectare"
+    },
+    "unitShort": {
+      "acre": "acre",
+      "kanal": "kanal",
+      "hectare": "ha"
+    },
+    "soilTypes": {
+      "loam": "Loam",
+      "clay": "Clay",
+      "sandy": "Sandy",
+      "silt": "Silt",
+      "unknown": "Not sure"
+    },
+    "form": {
+      "name": "Farm name",
+      "namePlaceholder": "e.g. Home farm",
+      "area": "Area",
+      "areaPlaceholder": "e.g. 12.5",
+      "unit": "Unit",
+      "location": "Location",
+      "useLocation": "Use my location",
+      "locating": "Finding your location…",
+      "pickDistrict": "Pick district",
+      "changeDistrict": "Change",
+      "searchDistrict": "Search district",
+      "noMatch": "No district found",
+      "locationDenied": "Location permission is off. Pick your district instead.",
+      "locationFailed": "Couldn't get your location. Pick your district instead.",
+      "outsidePunjab": "Your location isn't in a Punjab district we know. Pick your district.",
+      "fromGps": "From your location",
+      "fromDistrict": "District centre",
+      "soil": "Soil type (optional)",
+      "notes": "Notes (optional)",
+      "notesPlaceholder": "Water source, landmarks…",
+      "save": "Save farm",
+      "delete": "Delete farm",
+      "deleteTitle": "Delete this farm?",
+      "deleteBody": "Its crops and activity log will also be removed.",
+      "deleteConfirm": "Delete",
+      "errors": {
+        "name": "Enter a name (up to 60 letters).",
+        "area_value": "Enter an area greater than 0.",
+        "area_unit": "Pick a unit.",
+        "district": "District name is too long.",
+        "notes": "Notes can be up to 500 letters.",
+        "lat": "Location looks wrong. Pick your district.",
+        "lng": "Location looks wrong. Pick your district.",
+        "generic": "Please check this field.",
+        "saveFailed": "Couldn't save. Please try again."
+      }
+    }
   },
   "expert": {
     "title": "ماہر سے پوچھیں",
