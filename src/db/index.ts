@@ -27,8 +27,9 @@ async function openSqlite(userId: string): Promise<{ repos: Repos; close: () => 
   const { createSqliteStore, migrate } = await import('./sqlite-store');
   const db = await SQLite.openDatabaseAsync(dbFileName(userId));
   await migrate(db);
-  const repos = createRepos(createSqliteStore(db), { userId, newId: () => Crypto.randomUUID() });
-  return { repos: { kind: 'sqlite', ...repos }, close: () => db.closeAsync() };
+  const store = createSqliteStore(db);
+  const repos = createRepos(store, { userId, newId: () => Crypto.randomUUID(), emitWrites: true });
+  return { repos: { kind: 'sqlite', store, userId, ...repos }, close: () => db.closeAsync() };
 }
 
 /** Repos for the signed-in user (null = demo). Reuses the open database for the same user. */
@@ -55,4 +56,16 @@ export async function closeRepos(): Promise<void> {
   const prev = current;
   current = null;
   await prev?.close();
+}
+
+/** Close (if open) and delete a user's local database file. Used on sign-out and account deletion. */
+export async function deleteUserDatabase(userId: string): Promise<void> {
+  if (current?.key === userId) await closeRepos();
+  if (Platform.OS === 'web') return;
+  const SQLite = await import('expo-sqlite');
+  try {
+    await SQLite.deleteDatabaseAsync(dbFileName(userId));
+  } catch {
+    // No file yet (never opened) — nothing to delete.
+  }
 }

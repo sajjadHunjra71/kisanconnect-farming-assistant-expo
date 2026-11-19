@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
 
 import { supabase } from '@/lib/supabase';
+import { handleSignedOut, startSync } from '@/sync/sync-manager';
 
 export type AuthStatus = 'loading' | 'signedIn' | 'signedOut' | 'demo';
 
@@ -35,10 +36,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!supabase) return () => undefined;
     void supabase.auth.getSession().then(({ data }) => {
       set({ session: data.session, status: data.session ? 'signedIn' : 'signedOut' });
-      if (data.session) void get().loadProfile();
+      if (data.session) {
+        void get().loadProfile();
+        void startSync(data.session.user.id);
+      }
     });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const hadSession = get().session !== null;
       set({ session, status: session ? 'signedIn' : 'signedOut', profile: session ? get().profile : null });
+      // Opens this user's local database (no-op if already open). Deferred like the profile fetch.
+      if (session) setTimeout(() => void startSync(session.user.id), 0);
+      else if (hadSession) setTimeout(() => void handleSignedOut(), 0);
       // Supabase warns against calling its API inside this callback; defer the profile fetch.
       if (session) setTimeout(() => void get().loadProfile(), 0);
     });

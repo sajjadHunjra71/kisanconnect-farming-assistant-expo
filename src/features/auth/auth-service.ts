@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
 import { AuthServiceError, requireSupabase, type AuthErrorCode } from '@/lib/supabase';
+import { beginUserSignOut, cancelUserSignOut, finishUserSignOut } from '@/sync/sync-manager';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -87,14 +88,30 @@ export async function exchangeCode(code: string) {
   if (error) throw mapError(error);
 }
 
+/**
+ * User-pressed sign-out. Check for unsent changes first (see confirmSignOut).
+ * Afterwards the user's local database file is closed and deleted.
+ */
 export async function signOut() {
-  const { error } = await requireSupabase().auth.signOut();
-  if (error) throw mapError(error);
+  const supabase = requireSupabase();
+  const userId = (await supabase.auth.getSession()).data.session?.user.id;
+  beginUserSignOut();
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    cancelUserSignOut();
+    throw mapError(error);
+  }
+  if (userId) await finishUserSignOut(userId);
+  else cancelUserSignOut();
 }
 
 export async function deleteAccount() {
   const supabase = requireSupabase();
+  const userId = (await supabase.auth.getSession()).data.session?.user.id;
   const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
   if (error) throw mapError(error);
+  beginUserSignOut();
   await supabase.auth.signOut({ scope: 'local' });
+  if (userId) await finishUserSignOut(userId);
+  else cancelUserSignOut();
 }

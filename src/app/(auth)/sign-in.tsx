@@ -7,6 +7,7 @@ import { Button, FormError, PressableScale, Screen, ScreenHeader, Text, TextFiel
 import { isBackendConfigured } from '@/config/env';
 import { signInWithEmail, signInWithGoogle } from '@/features/auth/auth-service';
 import { AuthNotice, GoogleButton, OrDivider } from '@/features/auth/components';
+import { SessionLossBanner } from '@/features/sync/components';
 import { goAfterAuth } from '@/features/auth/navigation';
 import { useAuthAction } from '@/features/auth/use-auth-action';
 import { signInSchema, validate } from '@/features/auth/validation';
@@ -55,6 +56,7 @@ export default function SignInScreen() {
         </Text>
       </View>
       <AuthNotice />
+      <SessionLossBanner />
       <FormError message={error ?? google.error} />
       <GoogleButton onPress={withGoogle} loading={google.loading} />
       <OrDivider />

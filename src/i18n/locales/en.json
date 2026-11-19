@@ -264,5 +264,33 @@
     "deleteBody": "Your profile and farm data will be permanently deleted. This can't be undone.",
     "deleteConfirm": "Delete permanently",
     "signOutConfirm": "Sign out of KisanConnect?"
+  },
+  "sync": {
+    "title": "Sync",
+    "status": {
+      "saved-locally": "Saved on phone",
+      "syncing": "Syncing…",
+      "synced": "Synced",
+      "offline": "Offline · saved on phone",
+      "error": "Sync problem"
+    },
+    "pending_one": "{{count}} change waiting to upload",
+    "pending_other": "{{count}} changes waiting to upload",
+    "failed_one": "{{count}} change could not be uploaded",
+    "failed_other": "{{count}} changes could not be uploaded",
+    "allSynced": "Everything is uploaded",
+    "notSignedIn": "Sign in to back up your farm data",
+    "syncNow": "Sync now",
+    "discardFailed": "Discard failed changes",
+    "discardTitle": "Discard failed changes?",
+    "discardBody": "They will be replaced by the copy saved online.",
+    "discard": "Discard",
+    "unsentTitle_one": "{{count}} change not uploaded yet",
+    "unsentTitle_other": "{{count}} changes not uploaded yet",
+    "unsentBody": "If you sign out now, these changes will be lost.",
+    "signOutAnyway": "Sign out anyway",
+    "sessionLost_one": "Sign in again to upload {{count}} change",
+    "sessionLost_other": "Sign in again to upload {{count}} changes",
+    "updatedElsewhere": "Updated from another device"
   }
 }

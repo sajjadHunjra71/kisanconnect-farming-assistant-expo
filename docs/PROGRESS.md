@@ -33,5 +33,17 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - New deps: expo-sqlite, netinfo, datetimepicker, expo-location (when-in-use message in app.json), expo-sharing; jest + jest-expo (`npm test`, 22 tests).
 - Not yet: push/pull sync (2B), farm/crop/activity screens wired to the repos.
 
+## Phase 2B: Offline sync engine (code done, 20 Nov 2026; needs a real Supabase run)
+- `src/sync/engine.ts` (pure TS, Supabase behind a `SyncTransport` interface):
+  - Push in outbox order after refreshing the session. Create = insert-or-ignore with `last_op_id`; update/delete = compare-and-set on `version`. On "0 rows" the row is fetched: my `last_op_id` → done (lost response); deleted on server → keep server copy; else conflict → server copy wins and an "Updated from another device" note is stored.
+  - Errors: network / 5xx / 503 paused / 429 → retry with exponential backoff (2 s → 5 min), attempts not counted; 401 → stop until signed in; 4xx / 23514 / 42501 / 23503 → attempts++, failed after 5. A failed farm or crop blocks its children's ops (skipped, not failed).
+  - Edits made while an op is in flight get a new outbox entry, rebased onto the server's new version when the op lands.
+  - Pull farms → crops → activities by keyset (updated_at, id), 500 per page, starting 2 min before the cursor. Rows with a local outbox entry are left for the push; others apply when server.version ≥ local. Cursor older than 90 days → full re-download and prune rows the server no longer has.
+- `src/sync/sync-manager.ts`: single-flight runs. Triggers: sign-in/app start, app foreground, network back, pull-to-refresh / Sync now (push + pull), 1.5 s after a local write (push only).
+- `useSyncStore`: status (saved on phone / syncing / synced / offline / error), pending count, failed ops, conflict notes. `SyncStatus` on the Farm header; Settings → Sync with "Sync now" and "Discard failed"; pull-to-refresh on Farm.
+- Sign-out: user sign-out warns "X changes not uploaded yet" (Sync now / Sign out anyway / Cancel), then closes and deletes `kisan-<userId>.db`. Delete account deletes it too. If the session ends by itself the file is kept and sign-in shows "Sign in again to upload X changes".
+- Tests: 45 (23 new for sync: coalesced create, CAS conflict, lost responses, error classes, parent blocking, in-flight rebase, pull keyset/overlap/version rule/protection, 90-day re-download). iOS bundle exports cleanly.
+- Not yet: run against a real Supabase project; farm/crop/activity screens still read sample data (2C).
+
 ## Next
-- Phase 2B: outbox push + cursor pull sync with Supabase, then wire farm screens to the repos.
+- Phase 2C: wire farm / crop / activity screens to the repos.

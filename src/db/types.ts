@@ -1,5 +1,7 @@
 import type { AreaUnit, CropId, QuantityUnit } from '@/engine';
 
+import type { Store } from './store';
+
 export const SYNC_TABLES = ['farms', 'crops', 'activities'] as const;
 export type SyncTable = (typeof SYNC_TABLES)[number];
 
@@ -90,6 +92,9 @@ export type ActivitiesRepo = Repo<ActivityRecord, ActivityInput>;
 
 export type Repos = {
   kind: 'sqlite' | 'sample';
+  /** Set for the signed-in user's SQLite database (used by sync). */
+  store?: Store;
+  userId?: string;
   farmsRepo: FarmsRepo;
   cropsRepo: CropsRepo;
   activitiesRepo: ActivitiesRepo;

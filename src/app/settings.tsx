@@ -8,6 +8,8 @@ import { Card, Divider, FormError, ListRow, Screen, ScreenHeader, SectionHeader,
 import { deleteAccount, signOut } from '@/features/auth/auth-service';
 import { useAuthAction } from '@/features/auth/use-auth-action';
 import { LanguagePicker } from '@/features/settings/components';
+import { confirmSignOut } from '@/features/sync/confirm-sign-out';
+import { SyncSettingsSection } from '@/features/sync/components';
 import { useAuthStore } from '@/store/auth-store';
 import { useSettingsStore, type ThemeMode, type Units } from '@/store/settings-store';
 import { useTheme } from '@/theme';
@@ -21,22 +23,16 @@ export default function SettingsScreen() {
   const [busy, setBusy] = useState<'signOut' | 'delete' | null>(null);
   const signedIn = status === 'signedIn';
 
-  const doSignOut = () =>
-    Alert.alert(t('settings.signOutConfirm'), undefined, [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('settings.signOut'),
-        onPress: async () => {
-          setBusy('signOut');
-          const ok = await run(async () => {
-            await signOut();
-            return true;
-          });
-          setBusy(null);
-          if (ok) router.replace('/welcome');
-        },
-      },
-    ]);
+  const doSignOut = async () => {
+    if (!(await confirmSignOut(t))) return;
+    setBusy('signOut');
+    const ok = await run(async () => {
+      await signOut();
+      return true;
+    });
+    setBusy(null);
+    if (ok) router.replace('/welcome');
+  };
 
   const doDelete = () =>
     Alert.alert(t('settings.deleteTitle'), t('settings.deleteBody'), [
@@ -121,6 +117,8 @@ export default function SettingsScreen() {
         </Card>
       </View>
 
+      {signedIn ? <SyncSettingsSection /> : null}
+
       <View style={{ gap: spacing.md }}>
         <SectionHeader title={t('settings.account')} />
         <FormError message={error} />
@@ -146,7 +144,7 @@ export default function SettingsScreen() {
           <Divider inset={52} />
           {signedIn ? (
             <>
-              <ListRow icon="logout" title={t('settings.signOut')} onPress={busy ? undefined : doSignOut} chevron={false} trailing={busy === 'signOut' ? spinner : undefined} />
+              <ListRow icon="logout" title={t('settings.signOut')} onPress={busy ? undefined : () => void doSignOut()} chevron={false} trailing={busy === 'signOut' ? spinner : undefined} />
               <Divider inset={52} />
               <ListRow
                 icon="delete-outline"

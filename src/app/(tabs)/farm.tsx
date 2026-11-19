@@ -1,24 +1,45 @@
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { RefreshControl, View } from 'react-native';
 
 import { Button, Card, Divider, IconButton, ListRow, SampleDataNotice, Screen, ScreenHeader, SectionHeader, StatTile, Text } from '@/components/ui';
 import { CropProgressCard } from '@/features/home/components';
+import { SyncStatus } from '@/features/sync/components';
 import { useDirection } from '@/hooks/use-direction';
 import { useLocalized } from '@/hooks/use-localized';
 import { sampleFarm } from '@/mocks/sample-data';
+import { requestSync } from '@/sync/sync-manager';
 import { useTheme } from '@/theme';
 
 export default function FarmScreen() {
   const { t } = useTranslation();
-  const { spacing } = useTheme();
+  const { spacing, colors } = useTheme();
   const { row } = useDirection();
   const l = useLocalized();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await requestSync('full');
+    setRefreshing(false);
+  };
 
   return (
     <Screen
       withTabBar
-      header={<ScreenHeader title={t('farm.title')} right={<IconButton icon="cog-outline" accessibilityLabel={t('farm.settings')} onPress={() => router.push('/settings')} />} large />}>
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} />}
+      header={
+        <ScreenHeader
+          title={t('farm.title')}
+          right={
+            <View style={{ flexDirection: row, alignItems: 'center', gap: spacing.sm }}>
+              <SyncStatus />
+              <IconButton icon="cog-outline" accessibilityLabel={t('farm.settings')} onPress={() => router.push('/settings')} />
+            </View>
+          }
+          large
+        />
+      }>
       <SampleDataNotice />
       <Card elevated style={{ gap: spacing.lg }}>
         <Text variant="h2">{l(sampleFarm.name)}</Text>

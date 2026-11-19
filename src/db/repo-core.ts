@@ -3,6 +3,7 @@
  * Every write = row change + outbox entry in ONE transaction, coalesced so a row
  * has at most one pending op.
  */
+import { notifyLocalWrite } from './events';
 import { coalesceOutbox, decisionOpId } from './outbox-coalesce';
 import type { Row, Store, TxStore } from './store';
 import type {
@@ -32,6 +33,8 @@ export type RepoContext = {
   userId: string;
   newId: () => string;
   now?: () => string;
+  /** Emit a local-write event after each committed write (SQLite repos only). */
+  emitWrites?: boolean;
 };
 
 /** Columns the server generates; never sent in a payload. */
@@ -76,6 +79,12 @@ function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R
     await tx.applyDecision(spec.table, row.id, decision);
   }
 
+  const written = <T>(p: Promise<T>): Promise<T> =>
+    p.then((v) => {
+      if (ctx.emitWrites) notifyLocalWrite();
+      return v;
+    });
+
   async function getLive(tx: TxStore, id: string): Promise<Row> {
     const row = await tx.getRow(spec.table, id);
     if (!row || row.user_id !== ctx.userId || row.deleted_at) throw new NotFoundError(spec.table, id);
@@ -98,7 +107,7 @@ function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R
       }),
 
     create: (input) =>
-      store.transaction(async (tx) => {
+      written(store.transaction(async (tx) => {
         const fields = spec.build(input);
         await spec.checkParents?.(tx, fields, ctx.userId);
         const ts = now();
@@ -114,10 +123,10 @@ function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R
         };
         await enqueue(tx, row, 'create');
         return row as R;
-      }),
+      })),
 
     update: (id, patch) =>
-      store.transaction(async (tx) => {
+      written(store.transaction(async (tx) => {
         const existing = await getLive(tx, id);
         const merged: Record<string, unknown> = { ...existing, ...patch };
         for (const k of spec.fixed) merged[k] = existing[k];
@@ -126,10 +135,10 @@ function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R
         const row: Row = { ...existing, ...fields, updated_at: now() };
         await enqueue(tx, row, 'update');
         return row as R;
-      }),
+      })),
 
     remove: (id) =>
-      store.transaction(async (tx) => {
+      written(store.transaction(async (tx) => {
         const existing = await tx.getRow(spec.table, id);
         if (!existing || existing.user_id !== ctx.userId || existing.deleted_at) return;
         const ts = now();
@@ -142,7 +151,7 @@ function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R
           for (const r of live) await tx.putRow(child.table, { ...r, deleted_at: ts, updated_at: ts });
           await tx.dropPending(child.table, live.map((r) => r.id));
         }
-      }),
+      })),
   };
 }
 

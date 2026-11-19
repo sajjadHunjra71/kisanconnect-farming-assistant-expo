@@ -2,7 +2,7 @@ import type { SQLiteBindValue, SQLiteDatabase } from 'expo-sqlite';
 
 import type { OutboxKind, OutboxOp } from './outbox-coalesce';
 import { MIGRATIONS, SCHEMA_VERSION, TABLE_COLUMNS } from './schema';
-import type { Row, Store, TxStore } from './store';
+import type { OutboxEntry, Row, Store, SyncCursor, TxStore } from './store';
 
 
 /** Run pending schema migrations (tracked with PRAGMA user_version). */
@@ -76,6 +76,48 @@ function txStore(db: SQLiteDatabase): TxStore {
         case 'ignore':
           break;
       }
+    },
+
+    deleteRow: async (table, id) => {
+      await db.runAsync(`delete from ${table} where id = ?`, [id]);
+    },
+
+    listOutbox: async () => {
+      const rows = await db.getAllAsync<Omit<OutboxEntry, 'payload'> & { payload: string }>(
+        `select rowid as seq, op_id, tbl, row_id, kind, payload, base_version, attempts, status, last_error
+           from outbox order by rowid`,
+      );
+      return rows.map((r) => ({ ...r, payload: JSON.parse(r.payload) as unknown }));
+    },
+
+    updateOutbox: async (opId, patch) => {
+      const keys = (['status', 'attempts', 'last_error', 'base_version'] as const).filter((k) => patch[k] !== undefined);
+      if (keys.length === 0) return;
+      await db.runAsync(`update outbox set ${keys.map((k) => `${k} = ?`).join(', ')} where op_id = ?`, [
+        ...keys.map((k) => bind(patch[k])),
+        opId,
+      ]);
+    },
+
+    deleteOutbox: async (opIds) => {
+      if (opIds.length === 0) return;
+      await db.runAsync(`delete from outbox where op_id in (${opIds.map(() => '?').join(', ')})`, opIds);
+    },
+
+    getCursor: async (table) => {
+      const r = await db.getFirstAsync<{ cursor_updated_at: string | null; cursor_id: string | null }>(
+        'select cursor_updated_at, cursor_id from sync_state where tbl = ?',
+        [table],
+      );
+      return r?.cursor_updated_at && r.cursor_id ? ({ updated_at: r.cursor_updated_at, id: r.cursor_id } satisfies SyncCursor) : null;
+    },
+
+    setCursor: async (table, cursor) => {
+      await db.runAsync(
+        `insert into sync_state (tbl, cursor_updated_at, cursor_id) values (?, ?, ?)
+         on conflict (tbl) do update set cursor_updated_at = excluded.cursor_updated_at, cursor_id = excluded.cursor_id`,
+        [table, cursor?.updated_at ?? null, cursor?.id ?? null],
+      );
     },
 
     dropPending: async (table, rowIds) => {

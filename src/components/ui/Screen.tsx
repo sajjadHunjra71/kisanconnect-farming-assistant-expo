@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
+import type { ReactElement, ReactNode } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, View, type RefreshControlProps, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme';
@@ -15,6 +15,8 @@ type ScreenProps = {
   header?: ReactNode;
   footer?: ReactNode;
   keyboard?: boolean;
+  /** Pull-to-refresh (scrolling screens only). */
+  refreshControl?: ReactElement<RefreshControlProps>;
 };
 
 export const TAB_BAR_SPACE = 104;
@@ -29,6 +31,7 @@ export function Screen({
   header,
   footer,
   keyboard = false,
+  refreshControl,
 }: ScreenProps) {
   const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
@@ -40,6 +43,7 @@ export function Screen({
     <ScrollView
       contentContainerStyle={[inner, { paddingBottom: footer ? spacing.lg : paddingBottom }]}
       showsVerticalScrollIndicator={false}
+      refreshControl={refreshControl}
       keyboardShouldPersistTaps="handled">
       {children}
     </ScrollView>
