@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -18,36 +18,56 @@ import Animated, {
 import { SvgXml } from 'react-native-svg';
 
 import { Text } from '@/components/ui';
-import { BRAND, LOGO_MARK, OBJECTS, type FarmObject } from './art';
+import { BRAND, LOGO_MARK } from './art';
 
 /**
- * Launch animation inspired by "burst" splash screens: on a harvest-yellow screen, farm objects
+ * Launch animation inspired by "burst" splash screens: on a harvest-yellow screen, 3D farm objects
  * fly out from behind the logo to their spots, float for a moment, then everything shrinks away
  * while the logo lifts and the app fades in underneath. ~2.3 s, tap to skip, honours Reduce Motion.
  */
 
-type Placement = { name: FarmObject; x: number; y: number; size: number; rotate: number };
+// 3D objects from Microsoft Fluent Emoji (MIT, see assets/images/splash/LICENSE.md).
+const IMAGES = {
+  sunCloud: require('../../../assets/images/splash/sun_cloud.png'),
+  rainCloud: require('../../../assets/images/splash/rain_cloud.png'),
+  droplet: require('../../../assets/images/splash/droplet.png'),
+  wheat: require('../../../assets/images/splash/wheat.png'),
+  tractor: require('../../../assets/images/splash/tractor.png'),
+  corn: require('../../../assets/images/splash/corn.png'),
+  chili: require('../../../assets/images/splash/chili.png'),
+  seedling: require('../../../assets/images/splash/seedling.png'),
+  leaf: require('../../../assets/images/splash/leaf.png'),
+  sunflower: require('../../../assets/images/splash/sunflower.png'),
+  buffalo: require('../../../assets/images/splash/buffalo.png'),
+  mango: require('../../../assets/images/splash/mango.png'),
+  tomato: require('../../../assets/images/splash/tomato.png'),
+  money: require('../../../assets/images/splash/money.png'),
+  potato: require('../../../assets/images/splash/potato.png'),
+  carrot: require('../../../assets/images/splash/carrot.png'),
+  sparkles: require('../../../assets/images/splash/sparkles.png'),
+} as const;
+
+type Placement = { name: keyof typeof IMAGES; x: number; y: number; size: number; rotate: number };
 
 // x/y are fractions of the screen; the layout keeps the centre clear for the logo.
 const PLACEMENTS: Placement[] = [
-  { name: 'sun', x: 0.8, y: 0.12, size: 104, rotate: 0 },
-  { name: 'cloudRain', x: 0.2, y: 0.1, size: 96, rotate: -8 },
-  { name: 'wheat', x: 0.1, y: 0.33, size: 92, rotate: -18 },
-  { name: 'tractor', x: 0.84, y: 0.36, size: 100, rotate: 8 },
-  { name: 'cotton', x: 0.48, y: 0.2, size: 70, rotate: 10 },
-  { name: 'drop', x: 0.62, y: 0.27, size: 44, rotate: 14 },
-  { name: 'leaf', x: 0.16, y: 0.6, size: 84, rotate: 20 },
-  { name: 'corn', x: 0.86, y: 0.62, size: 88, rotate: -16 },
-  { name: 'chili', x: 0.32, y: 0.79, size: 76, rotate: -24 },
-  { name: 'can', x: 0.74, y: 0.83, size: 92, rotate: 6 },
-  { name: 'sprout', x: 0.12, y: 0.88, size: 84, rotate: -6 },
-  { name: 'coin', x: 0.52, y: 0.92, size: 56, rotate: 12 },
-  { name: 'sparkle', x: 0.3, y: 0.24, size: 26, rotate: 0 },
-  { name: 'sparkle', x: 0.7, y: 0.7, size: 22, rotate: 0 },
-  { name: 'sparkle', x: 0.9, y: 0.92, size: 18, rotate: 0 },
-  { name: 'dot', x: 0.36, y: 0.42, size: 10, rotate: 0 },
-  { name: 'dot', x: 0.66, y: 0.58, size: 12, rotate: 0 },
-  { name: 'dot', x: 0.06, y: 0.74, size: 9, rotate: 0 },
+  { name: 'sunCloud', x: 0.78, y: 0.11, size: 112, rotate: 0 },
+  { name: 'rainCloud', x: 0.2, y: 0.09, size: 96, rotate: -6 },
+  { name: 'droplet', x: 0.5, y: 0.17, size: 50, rotate: 12 },
+  { name: 'wheat', x: 0.12, y: 0.3, size: 96, rotate: -14 },
+  { name: 'tractor', x: 0.82, y: 0.32, size: 108, rotate: 6 },
+  { name: 'leaf', x: 0.36, y: 0.27, size: 64, rotate: 10 },
+  { name: 'mango', x: 0.66, y: 0.24, size: 58, rotate: -18 },
+  { name: 'sunflower', x: 0.12, y: 0.55, size: 92, rotate: 12 },
+  { name: 'corn', x: 0.88, y: 0.56, size: 92, rotate: -14 },
+  { name: 'tomato', x: 0.3, y: 0.68, size: 66, rotate: -10 },
+  { name: 'chili', x: 0.7, y: 0.69, size: 70, rotate: 22 },
+  { name: 'buffalo', x: 0.2, y: 0.84, size: 112, rotate: 0 },
+  { name: 'money', x: 0.8, y: 0.83, size: 90, rotate: 8 },
+  { name: 'seedling', x: 0.5, y: 0.9, size: 80, rotate: 0 },
+  { name: 'carrot', x: 0.9, y: 0.93, size: 58, rotate: -20 },
+  { name: 'potato', x: 0.08, y: 0.7, size: 54, rotate: 16 },
+  { name: 'sparkles', x: 0.56, y: 0.38, size: 40, rotate: 0 },
 ];
 
 const LOGO = 112;
@@ -74,7 +94,7 @@ function BurstObject({ p, index, burst, exit, float, width, height }: { p: Place
   });
   return (
     <Animated.View pointerEvents="none" style={[styles.center, { width: p.size, height: p.size, marginLeft: -p.size / 2, marginTop: -p.size / 2 }, style]}>
-      <SvgXml xml={OBJECTS[p.name]} width={p.size} height={p.size} />
+      <Image source={IMAGES[p.name]} style={{ width: p.size, height: p.size }} resizeMode="contain" />
     </Animated.View>
   );
 }
