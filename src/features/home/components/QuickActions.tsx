@@ -15,6 +15,7 @@ export function QuickActions() {
   const { row } = useDirection();
 
   const actions: Action[] = [
+    { key: 'log', icon: 'clipboard-edit-outline', label: t('home.quickLog'), href: '/activity/edit', bg: 'successSoft', fg: 'success' },
     { key: 'scan', icon: 'line-scan', label: t('home.quickScan'), href: '/(tabs)/scan', bg: 'accentSoft', fg: 'warning' },
     { key: 'ask', icon: 'microphone-outline', label: t('home.quickAsk'), href: '/(tabs)/assistant', bg: 'primarySoft', fg: 'primary' },
     { key: 'expert', icon: 'account-tie-outline', label: t('home.quickExpert'), href: '/expert', bg: 'infoSoft', fg: 'info' },

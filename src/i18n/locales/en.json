@@ -123,7 +123,8 @@
     "mandiTitle": "Mandi today",
     "seeWeather": "Full forecast",
     "noCropsTitle": "No crops yet",
-    "noCropsBody": "Add your farm and crops to see their stages here."
+    "noCropsBody": "Add your farm and crops to see their stages here.",
+    "quickLog": "Log"
   },
   "weather": {
     "title": "Weather",
@@ -427,6 +428,57 @@
       "maund": "maund",
       "hour": "hour"
     },
-    "cost": "Rs {{amount}}"
+    "cost": "Rs {{amount}}",
+    "log": "Log activity",
+    "edit": "Edit activity",
+    "title": "Activity log",
+    "type": "What did you do?",
+    "date": "Date",
+    "quantity": "Quantity (optional)",
+    "quantityPlaceholder": "e.g. 2",
+    "unit": "Unit",
+    "product": "Product (optional)",
+    "productPlaceholder": "e.g. Urea, DAP, canal water",
+    "costLabel": "Cost in rupees (optional)",
+    "costPlaceholder": "e.g. 3500",
+    "notes": "Notes (optional)",
+    "crop": "Crop",
+    "wholeFarm": "Whole farm",
+    "save": "Save",
+    "delete": "Delete activity",
+    "deleteTitle": "Delete this activity?",
+    "deleteConfirm": "Delete",
+    "harvestTitle": "Mark crop as harvested?",
+    "harvestBody": "The crop moves to past crops with this date.",
+    "harvestYes": "Yes, mark harvested",
+    "harvestNo": "No, just log it",
+    "all": "All",
+    "empty": "Nothing logged yet.",
+    "emptyFiltered": "Nothing matches these filters.",
+    "noFarm": "Add a farm first to log activities.",
+    "errors": {
+      "type": "Pick what you did.",
+      "done_on": "Pick a date that isn't in the future.",
+      "quantity": "Enter a quantity greater than 0.",
+      "quantity_unit": "Pick a unit for the quantity.",
+      "product": "Product can be up to 80 letters.",
+      "cost_pkr": "Enter a cost of 0 or more.",
+      "notes": "Notes can be up to 500 letters.",
+      "crop_id": "That crop isn't on this farm.",
+      "harvested_on": "Harvest date can't be before sowing.",
+      "farm_id": "This farm no longer exists.",
+      "generic": "Please check this field.",
+      "saveFailed": "Couldn't save. Please try again."
+    }
+  },
+  "summary": {
+    "title": "This season",
+    "lastIrrigation": "Last irrigation",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago",
+    "today": "Today",
+    "never": "Not logged",
+    "sprays": "Sprays",
+    "totalCost": "Total cost since {{date}}"
   }
 }

@@ -98,4 +98,6 @@ export type Repos = {
   farmsRepo: FarmsRepo;
   cropsRepo: CropsRepo;
   activitiesRepo: ActivitiesRepo;
+  /** Activity + (for a harvest) mark the crop harvested, in one transaction. */
+  logActivity(input: ActivityInput, options?: { markCropHarvested?: boolean }): Promise<ActivityRecord>;
 };

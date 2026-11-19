@@ -57,5 +57,11 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - Crop detail (`/crop/[id]`): stage timeline with the current stage highlighted and "next stage in N days", this crop's activity list, Mark harvested (status + today's date), Delete (asks first), edit. "Updated from another device" tag.
 - Home shows the selected farm's active crops (up to 3) instead of the sample crop; empty state links to the Farm tab.
 
+## Phase 2E: Activity log (code done, 20 Nov 2026)
+- Log / edit activity (`/activity/edit`): type chips with icons, date (today by default, never in the future), quantity + unit, product, cost in PKR, notes, optional crop (or whole farm). Opens from crop detail, the Farm tab and a new "Log" quick action on Home (uses the selected farm).
+- Logging a harvest for an active crop asks "Mark crop as harvested?"; yes writes the activity and the crop status in one transaction (`repos.logActivity`; both or neither).
+- Activity timeline per farm (`/activity?farmId=`, from Farm → Activity log): filter by crop / whole farm and by type, tap to edit or delete.
+- Farm summary card: last irrigation and sprays this season per active crop, total cost since the earliest active sowing date. Whole-farm activities count for every active crop (`summarizeFarm`, unit-tested).
+
 ## Next
-- Phase 2E: activity log.
+- Phase 2F.

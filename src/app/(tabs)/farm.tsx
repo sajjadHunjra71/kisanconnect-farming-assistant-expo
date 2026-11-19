@@ -7,6 +7,7 @@ import { Button, Card, Divider, EmptyState, IconButton, ListRow, SampleDataNotic
 import { CROP_CALENDARS } from '@/engine';
 import { formatDate } from '@/features/farm/format';
 import { useLocalized } from '@/hooks/use-localized';
+import { FarmSummaryCard } from '@/features/activity/FarmSummaryCard';
 import { FarmCard, FarmSwitcher } from '@/features/farm/components';
 import { useRepoQuery } from '@/features/farm/hooks';
 import { CropProgressCard } from '@/features/home/components';
@@ -33,7 +34,8 @@ export default function FarmScreen() {
       farms.sort((a, b) => a.created_at.localeCompare(b.created_at));
       const farm = farms.find((f) => f.id === selectedFarmId) ?? farms[0] ?? null;
       const crops = farm ? await repos.cropsRepo.list({ farmId: farm.id }) : [];
-      return { farms, farm, crops };
+      const activities = farm ? await repos.activitiesRepo.list({ farmId: farm.id }) : [];
+      return { farms, farm, crops, activities };
     },
     [selectedFarmId],
   );
@@ -75,6 +77,9 @@ export default function FarmScreen() {
         <>
           {data.farms.length > 1 ? <FarmSwitcher farms={data.farms} selectedId={farm.id} onSelect={setSelectedFarmId} /> : null}
           <FarmCard farm={farm} onEdit={() => router.push({ pathname: '/farm/edit', params: { id: farm.id } })} />
+
+          <FarmSummaryCard crops={data.crops} activities={data.activities} />
+          <Button label={t('activity.log')} icon="clipboard-edit-outline" onPress={() => router.push({ pathname: '/activity/edit', params: { farmId: farm.id } })} />
 
           <View style={{ gap: spacing.md }}>
             <SectionHeader title={t('farm.crops')} />
@@ -126,8 +131,17 @@ export default function FarmScreen() {
         ) : null}
         <ListRow icon="chart-line-variant" iconTone="accentSoft" title={t('mandi.title')} onPress={() => router.push('/mandi')} />
         <Divider inset={52} />
-        <ListRow icon="clipboard-text-clock-outline" iconTone="primarySoft" title={t('farm.activity')} onPress={() => undefined} />
-        <Divider inset={52} />
+        {farm ? (
+          <>
+            <ListRow
+              icon="clipboard-text-clock-outline"
+              iconTone="primarySoft"
+              title={t('farm.activity')}
+              onPress={() => router.push({ pathname: '/activity', params: { farmId: farm.id } })}
+            />
+            <Divider inset={52} />
+          </>
+        ) : null}
         <ListRow icon="cog-outline" iconTone="surfaceAlt" title={t('farm.settings')} onPress={() => router.push('/settings')} />
       </Card>
     </Screen>

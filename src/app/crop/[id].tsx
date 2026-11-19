@@ -161,7 +161,7 @@ export default function CropDetailScreen() {
             data.activities.map((a, i) => (
               <View key={a.id}>
                 {i > 0 ? <Divider inset={52} /> : null}
-                <ActivityRow activity={a} />
+                <ActivityRow activity={a} onPress={() => router.push({ pathname: '/activity/edit', params: { id: a.id } })} />
               </View>
             ))
           )}
@@ -169,6 +169,7 @@ export default function CropDetailScreen() {
       </View>
 
       <View style={{ gap: spacing.sm }}>
+        <Button label={t('activity.log')} icon="clipboard-edit-outline" onPress={() => router.push({ pathname: '/activity/edit', params: { farmId: crop.farm_id, cropId: crop.id } })} />
         {active ? <Button label={t('crop.markHarvested')} icon="basket-check-outline" variant="secondary" onPress={markHarvested} /> : null}
         <Button label={t('crop.delete')} icon="delete-outline" variant="danger" onPress={confirmDelete} />
       </View>

@@ -58,7 +58,21 @@ async function liveParent(tx: TxStore, table: SyncTable, id: string, userId: str
   return row;
 }
 
-function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R, I> {
+const writtenFor =
+  (ctx: RepoContext) =>
+  <T>(p: Promise<T>): Promise<T> =>
+    p.then((v) => {
+      if (ctx.emitWrites) notifyLocalWrite();
+      return v;
+    });
+
+/** Repo plus in-transaction helpers for multi-table writes. */
+type TxRepo<R, I> = Repo<R, I> & {
+  createTx(tx: TxStore, input: I): Promise<R>;
+  updateTx(tx: TxStore, id: string, patch: Partial<I>): Promise<R>;
+};
+
+function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): TxRepo<R, I> {
   const now = ctx.now ?? (() => new Date().toISOString());
 
   async function enqueue(tx: TxStore, row: Row, kind: 'create' | 'update' | 'delete') {
@@ -79,11 +93,7 @@ function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R
     await tx.applyDecision(spec.table, row.id, decision);
   }
 
-  const written = <T>(p: Promise<T>): Promise<T> =>
-    p.then((v) => {
-      if (ctx.emitWrites) notifyLocalWrite();
-      return v;
-    });
+  const written = writtenFor(ctx);
 
   async function getLive(tx: TxStore, id: string): Promise<Row> {
     const row = await tx.getRow(spec.table, id);
@@ -91,7 +101,38 @@ function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R
     return row;
   }
 
-  return {
+  async function createTx(tx: TxStore, input: I): Promise<R> {
+    const fields = spec.build(input);
+    await spec.checkParents?.(tx, fields, ctx.userId);
+    const ts = now();
+    const row: Row = {
+      id: ctx.newId(),
+      user_id: ctx.userId,
+      ...fields,
+      version: 0,
+      last_op_id: null,
+      created_at: ts,
+      updated_at: ts,
+      deleted_at: null,
+    };
+    await enqueue(tx, row, 'create');
+    return row as R;
+  }
+
+  async function updateTx(tx: TxStore, id: string, patch: Partial<I>): Promise<R> {
+    const existing = await getLive(tx, id);
+    const merged: Record<string, unknown> = { ...existing, ...patch };
+    for (const k of spec.fixed) merged[k] = existing[k];
+    const fields = spec.build(merged as I);
+    await spec.checkParents?.(tx, fields, ctx.userId);
+    const row: Row = { ...existing, ...fields, updated_at: now() };
+    await enqueue(tx, row, 'update');
+    return row as R;
+  }
+
+  const repo: TxRepo<R, I> = {
+    createTx,
+    updateTx,
     list: (options: ListOptions = {}) =>
       store.transaction(async (tx) => {
         const rows = await tx.listRows(spec.table, { user_id: ctx.userId, farm_id: options.farmId, crop_id: options.cropId });
@@ -106,36 +147,9 @@ function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R
         return row && row.user_id === ctx.userId && !row.deleted_at ? (row as R) : null;
       }),
 
-    create: (input) =>
-      written(store.transaction(async (tx) => {
-        const fields = spec.build(input);
-        await spec.checkParents?.(tx, fields, ctx.userId);
-        const ts = now();
-        const row: Row = {
-          id: ctx.newId(),
-          user_id: ctx.userId,
-          ...fields,
-          version: 0,
-          last_op_id: null,
-          created_at: ts,
-          updated_at: ts,
-          deleted_at: null,
-        };
-        await enqueue(tx, row, 'create');
-        return row as R;
-      })),
+    create: (input) => written(store.transaction((tx) => createTx(tx, input))),
 
-    update: (id, patch) =>
-      written(store.transaction(async (tx) => {
-        const existing = await getLive(tx, id);
-        const merged: Record<string, unknown> = { ...existing, ...patch };
-        for (const k of spec.fixed) merged[k] = existing[k];
-        const fields = spec.build(merged as I);
-        await spec.checkParents?.(tx, fields, ctx.userId);
-        const row: Row = { ...existing, ...fields, updated_at: now() };
-        await enqueue(tx, row, 'update');
-        return row as R;
-      })),
+    update: (id, patch) => written(store.transaction((tx) => updateTx(tx, id, patch))),
 
     remove: (id) =>
       written(store.transaction(async (tx) => {
@@ -153,10 +167,12 @@ function createRepo<R, I>(store: Store, spec: Spec<I>, ctx: RepoContext): Repo<R
         }
       })),
   };
+  return repo;
 }
 
 export function createRepos(store: Store, ctx: RepoContext) {
-  const farmsRepo: FarmsRepo = createRepo<FarmRecord, FarmInput>(
+  const written = writtenFor(ctx);
+  const farmsRepo = createRepo<FarmRecord, FarmInput>(
     store,
     {
       table: 'farms',
@@ -173,7 +189,7 @@ export function createRepos(store: Store, ctx: RepoContext) {
     ctx,
   );
 
-  const cropsRepo: CropsRepo = createRepo<CropRecord, CropInput>(
+  const cropsRepo = createRepo<CropRecord, CropInput>(
     store,
     {
       table: 'crops',
@@ -190,7 +206,7 @@ export function createRepos(store: Store, ctx: RepoContext) {
     ctx,
   );
 
-  const activitiesRepo: ActivitiesRepo = createRepo<ActivityRecord, ActivityInput>(
+  const activitiesRepo = createRepo<ActivityRecord, ActivityInput>(
     store,
     {
       table: 'activities',
@@ -208,5 +224,25 @@ export function createRepos(store: Store, ctx: RepoContext) {
     ctx,
   );
 
-  return { farmsRepo, cropsRepo, activitiesRepo };
+  /**
+   * Log an activity; for a harvest with `markCropHarvested`, also set the crop to
+   * harvested on the activity date — both in ONE transaction (all or nothing).
+   */
+  const logActivity = (input: ActivityInput, options: { markCropHarvested?: boolean } = {}): Promise<ActivityRecord> =>
+    written(
+      store.transaction(async (tx) => {
+        const activity = await activitiesRepo.createTx(tx, input);
+        if (options.markCropHarvested && activity.type === 'harvest' && activity.crop_id) {
+          await cropsRepo.updateTx(tx, activity.crop_id, { status: 'harvested', harvested_on: activity.done_on });
+        }
+        return activity;
+      }),
+    );
+
+  return {
+    farmsRepo: farmsRepo as FarmsRepo,
+    cropsRepo: cropsRepo as CropsRepo,
+    activitiesRepo: activitiesRepo as ActivitiesRepo,
+    logActivity,
+  };
 }

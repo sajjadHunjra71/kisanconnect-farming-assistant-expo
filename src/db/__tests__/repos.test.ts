@@ -88,3 +88,26 @@ describe('repos + outbox', () => {
     expect(s.outbox.map((o) => o.tbl)).toEqual(['farms']);
   });
 });
+
+describe('logActivity', () => {
+  it('harvest + mark crop harvested commit together', async () => {
+    const { store, farmsRepo, cropsRepo, logActivity } = setup();
+    const farm = await farmsRepo.create(farmInput);
+    const crop = await cropsRepo.create({ farm_id: farm.id, crop_key: 'wheat', sowing_date: '2026-03-01' });
+    await logActivity({ farm_id: farm.id, crop_id: crop.id, type: 'harvest', done_on: '2026-04-20' }, { markCropHarvested: true });
+    expect(await cropsRepo.get(crop.id)).toMatchObject({ status: 'harvested', harvested_on: '2026-04-20' });
+    expect(Object.keys(store.snapshot().tables.activities)).toHaveLength(1);
+  });
+
+  it('rolls back the activity when the crop update fails', async () => {
+    const { store, farmsRepo, cropsRepo, logActivity } = setup();
+    const farm = await farmsRepo.create(farmInput);
+    const crop = await cropsRepo.create({ farm_id: farm.id, crop_key: 'wheat', sowing_date: '2026-05-01' });
+    // harvest dated before sowing → crop update is rejected → nothing is written
+    await expect(
+      logActivity({ farm_id: farm.id, crop_id: crop.id, type: 'harvest', done_on: '2026-04-20' }, { markCropHarvested: true }),
+    ).rejects.toThrow('harvested_on');
+    expect(store.snapshot().tables.activities).toEqual({});
+    expect((await cropsRepo.get(crop.id))?.status).toBe('active');
+  });
+});
