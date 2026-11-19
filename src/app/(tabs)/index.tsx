@@ -2,13 +2,16 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Card, Divider, SampleDataNotice, Screen, SectionHeader } from '@/components/ui';
+import { Card, Divider, EmptyState, SampleDataNotice, Screen, SectionHeader } from '@/components/ui';
+import { useRepoQuery } from '@/features/farm/hooks';
+import { districtLabel } from '@/features/farm/format';
 import { CropProgressCard, GreetingHeader, QuickActions, TaskItem, WeatherHero } from '@/features/home/components';
 import { PriceCard } from '@/features/mandi/components';
 import { AdvisoryCard } from '@/features/weather/components';
 import { useLocalized } from '@/hooks/use-localized';
 import { sampleAdvisories, sampleFarm, sampleMandi, sampleTasks, sampleUser, sampleWeatherNow } from '@/mocks/sample-data';
 import { selectDisplayName, useAuthStore } from '@/store/auth-store';
+import { useSettingsStore } from '@/store/settings-store';
 import { useTheme } from '@/theme';
 
 export default function HomeScreen() {
@@ -16,15 +19,34 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const { spacing } = useTheme();
   const l = useLocalized();
-  const mainCrop = sampleFarm.crops[0];
+  const selectedFarmId = useSettingsStore((s) => s.selectedFarmId);
+  const language = useSettingsStore((s) => s.language);
+  const { data } = useRepoQuery(
+    async (repos) => {
+      const farms = (await repos.farmsRepo.list()).sort((a, b) => a.created_at.localeCompare(b.created_at));
+      const farm = farms.find((f) => f.id === selectedFarmId) ?? farms[0] ?? null;
+      const crops = farm ? (await repos.cropsRepo.list({ farmId: farm.id })).filter((c) => c.status === 'active') : [];
+      crops.sort((a, b) => a.sowing_date.localeCompare(b.sowing_date));
+      return { farm, crops };
+    },
+    [selectedFarmId],
+  );
+  const location = data?.farm ? districtLabel(data.farm.district, language, data.farm.name) : l(sampleFarm.district);
 
   return (
     <Screen withTabBar>
-      <GreetingHeader name={displayName ?? sampleUser.name} location={l(sampleFarm.district)} />
+      <GreetingHeader name={displayName ?? sampleUser.name} location={location} />
       <SampleDataNotice />
       <WeatherHero weather={sampleWeatherNow} onPress={() => router.push('/(tabs)/weather')} />
       <QuickActions />
-      <CropProgressCard crop={mainCrop} onPress={() => router.push('/(tabs)/farm')} />
+      {data && data.crops.length === 0 ? (
+        <Card>
+          <EmptyState icon="sprout-outline" title={t('home.noCropsTitle')} body={t('home.noCropsBody')} actionLabel={t('farm.title')} onAction={() => router.push('/(tabs)/farm')} />
+        </Card>
+      ) : null}
+      {(data?.crops ?? []).slice(0, 3).map((c) => (
+        <CropProgressCard key={c.id} crop={c} onPress={() => router.push({ pathname: '/crop/[id]', params: { id: c.id } })} />
+      ))}
 
       <View style={{ gap: spacing.md }}>
         <SectionHeader title={t('home.advisories')} actionLabel={t('common.seeAll')} onAction={() => router.push('/(tabs)/weather')} />

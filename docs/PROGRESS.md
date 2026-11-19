@@ -51,5 +51,11 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - Onboarding farm setup now asks farm name + area and saves a real farm (and crop, from "sown about…") for signed-in users; demo mode skips saving.
 - Session-loss banner also on Welcome. "Updated from another device" tag on the farm card.
 
+## Phase 2D: Crops (code done, 20 Nov 2026)
+- Farm tab: active crops as progress cards from the crop engine (future sowing → "Planned, sowing in N days"; past the season → "ready to harvest"); harvested / failed crops in a collapsed "Past crops" section.
+- Add / edit crop (`/crop/edit?farmId=&id=`): crop tiles, variety chips from the engine list + "Other" free text, sowing date picker (today − (season + 180 days) … today + 30), optional area + unit with a warning (not a block) when active crops add up to more than the farm.
+- Crop detail (`/crop/[id]`): stage timeline with the current stage highlighted and "next stage in N days", this crop's activity list, Mark harvested (status + today's date), Delete (asks first), edit. "Updated from another device" tag.
+- Home shows the selected farm's active crops (up to 3) instead of the sample crop; empty state links to the Farm tab.
+
 ## Next
-- Phase 2D: crops. Phase 2E: activity log.
+- Phase 2E: activity log.

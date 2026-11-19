@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 
-import { districtByName } from '@/engine';
+import { districtByName, parseLocalDate } from '@/engine';
 import type { LanguageCode } from '@/i18n/languages';
 
 /** "12.5 acre" / "16 kanal" — numbers kept as entered (max 3 dp). */
@@ -13,4 +13,14 @@ export function districtLabel(name: string | null, language: LanguageCode, fallb
   if (!name) return fallback;
   const d = districtByName(name);
   return d && language === 'ur' ? d.ur : (d?.en ?? name);
+}
+
+/** "12 Nov 2026" for a local 'YYYY-MM-DD' date. */
+export function formatDate(date: string, language: LanguageCode): string {
+  const d = parseLocalDate(date);
+  try {
+    return d.toLocaleDateString(language === 'ur' ? 'ur-PK' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return date;
+  }
 }

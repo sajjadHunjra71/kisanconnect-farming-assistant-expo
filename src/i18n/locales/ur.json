@@ -121,7 +121,9 @@
     "advisories": "آج کے مشورے",
     "tasks": "آپ کے کام",
     "mandiTitle": "آج کی منڈی",
-    "seeWeather": "مکمل پیشگوئی"
+    "seeWeather": "مکمل پیشگوئی",
+    "noCropsTitle": "No crops yet",
+    "noCropsBody": "Add your farm and crops to see their stages here."
   },
   "weather": {
     "title": "موسم",
@@ -355,5 +357,76 @@
     "sessionLost_one": "{{count}} تبدیلی اپ لوڈ کرنے کے لیے دوبارہ سائن ان کریں",
     "sessionLost_other": "{{count}} تبدیلیاں اپ لوڈ کرنے کے لیے دوبارہ سائن ان کریں",
     "updatedElsewhere": "کسی دوسرے فون سے بدلا گیا"
+  },
+  "crop": {
+    "addCrop": "Add crop",
+    "editCrop": "Edit crop",
+    "crop": "Crop",
+    "variety": "Variety",
+    "varietyOther": "Other",
+    "varietyPlaceholder": "Variety name",
+    "sowingDate": "Sowing date",
+    "area": "Area (optional)",
+    "areaPlaceholder": "e.g. 4",
+    "save": "Save crop",
+    "indicative": "Stages are a rough guide, not official advice.",
+    "areaWarning": "Active crops on this farm add up to {{used}} acres, more than the farm's {{total}} acres.",
+    "planned_one": "Planned, sowing in {{count}} day",
+    "planned_other": "Planned, sowing in {{count}} days",
+    "seasonDone": "Season complete · ready to harvest",
+    "nextStage_one": "Next stage in {{count}} day",
+    "nextStage_other": "Next stage in {{count}} days",
+    "lastStage": "Final stage",
+    "timeline": "Crop stages",
+    "activity": "Activity",
+    "noActivity": "No activity logged yet.",
+    "noCrops": "No crops yet. Add the crop you're growing.",
+    "markHarvested": "Mark harvested",
+    "harvestTitle": "Mark this crop as harvested?",
+    "harvestBody": "It moves to past crops with today's date.",
+    "harvestConfirm": "Mark harvested",
+    "harvestedOn": "Harvested {{date}}",
+    "sown": "Sown {{date}}",
+    "pastCrops": "Past crops",
+    "show": "Show",
+    "hide": "Hide",
+    "delete": "Delete crop",
+    "deleteTitle": "Delete this crop?",
+    "deleteBody": "Its activity log will also be removed.",
+    "deleteConfirm": "Delete",
+    "status": {
+      "active": "Active",
+      "harvested": "Harvested",
+      "failed": "Failed"
+    },
+    "errors": {
+      "sowing_date": "Pick a valid sowing date.",
+      "variety": "Variety can be up to 60 letters.",
+      "area_value": "Enter an area greater than 0.",
+      "area_unit": "Pick a unit.",
+      "harvested_on": "Harvest date can't be before sowing.",
+      "farm_id": "This farm no longer exists.",
+      "generic": "Please check this field.",
+      "saveFailed": "Couldn't save. Please try again."
+    }
+  },
+  "activity": {
+    "types": {
+      "irrigation": "Irrigation",
+      "fertilizer": "Fertilizer",
+      "spray": "Spray",
+      "harvest": "Harvest",
+      "sowing": "Sowing",
+      "other": "Other"
+    },
+    "units": {
+      "bag": "bag",
+      "kg": "kg",
+      "litre": "litre",
+      "acre-inch": "acre-inch",
+      "maund": "maund",
+      "hour": "hour"
+    },
+    "cost": "Rs {{amount}}"
   }
 }

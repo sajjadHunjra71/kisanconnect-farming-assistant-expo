@@ -3,7 +3,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, View } from 'react-native';
 
-import { Button, Card, Divider, EmptyState, IconButton, ListRow, SampleDataNotice, Screen, ScreenHeader, SectionHeader } from '@/components/ui';
+import { Button, Card, Divider, EmptyState, IconButton, ListRow, SampleDataNotice, Screen, ScreenHeader, SectionHeader, Text, type IconName } from '@/components/ui';
+import { CROP_CALENDARS } from '@/engine';
+import { formatDate } from '@/features/farm/format';
+import { useLocalized } from '@/hooks/use-localized';
 import { FarmCard, FarmSwitcher } from '@/features/farm/components';
 import { useRepoQuery } from '@/features/farm/hooks';
 import { CropProgressCard } from '@/features/home/components';
@@ -20,6 +23,9 @@ export default function FarmScreen() {
   const selectedFarmId = useSettingsStore((s) => s.selectedFarmId);
   const setSelectedFarmId = useSettingsStore((s) => s.setSelectedFarmId);
   const [refreshing, setRefreshing] = useState(false);
+  const [showPast, setShowPast] = useState(false);
+  const language = useSettingsStore((s) => s.language);
+  const l = useLocalized();
 
   const { data, isSample, loading } = useRepoQuery(
     async (repos) => {
@@ -32,6 +38,10 @@ export default function FarmScreen() {
     [selectedFarmId],
   );
   const farm = data?.farm ?? null;
+  const activeCrops = (data?.crops ?? []).filter((c) => c.status === 'active').sort((a, b) => a.sowing_date.localeCompare(b.sowing_date));
+  const pastCrops = (data?.crops ?? [])
+    .filter((c) => c.status !== 'active')
+    .sort((a, b) => (b.harvested_on ?? b.sowing_date).localeCompare(a.harvested_on ?? a.sowing_date));
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -68,16 +78,38 @@ export default function FarmScreen() {
 
           <View style={{ gap: spacing.md }}>
             <SectionHeader title={t('farm.crops')} />
-            {data.crops
-              .filter((c) => c.status === 'active')
-              .map((c) => (
-                <CropProgressCard
-                  key={c.id}
-                  crop={{ id: c.id, cropId: c.crop_key, variety: c.variety ?? '', sowingDate: c.sowing_date, areaAcres: c.area_acres ?? 0 }}
-                />
-              ))}
-            <Button label={t('farm.addCrop')} icon="plus" variant="secondary" />
+            {activeCrops.length === 0 ? (
+              <Text variant="body" color="inkMuted">
+                {t('crop.noCrops')}
+              </Text>
+            ) : null}
+            {activeCrops.map((c) => (
+              <CropProgressCard key={c.id} crop={c} onPress={() => router.push({ pathname: '/crop/[id]', params: { id: c.id } })} />
+            ))}
+            <Button label={t('farm.addCrop')} icon="plus" variant="secondary" onPress={() => router.push({ pathname: '/crop/edit', params: { farmId: farm.id } })} />
           </View>
+
+          {pastCrops.length > 0 ? (
+            <View style={{ gap: spacing.md }}>
+              <SectionHeader title={t('crop.pastCrops')} actionLabel={showPast ? t('crop.hide') : `${t('crop.show')} (${pastCrops.length})`} onAction={() => setShowPast((v) => !v)} />
+              {showPast ? (
+                <Card style={{ paddingVertical: spacing.xs }}>
+                  {pastCrops.map((c, i) => (
+                    <View key={c.id}>
+                      {i > 0 ? <Divider inset={52} /> : null}
+                      <ListRow
+                        icon={CROP_CALENDARS[c.crop_key].icon as IconName}
+                        iconTone="surfaceAlt"
+                        title={[l(CROP_CALENDARS[c.crop_key].name), c.variety].filter(Boolean).join(' · ')}
+                        subtitle={[t(`crop.status.${c.status}`), c.harvested_on ? formatDate(c.harvested_on, language) : formatDate(c.sowing_date, language)].join(' · ')}
+                        onPress={() => router.push({ pathname: '/crop/[id]', params: { id: c.id } })}
+                      />
+                    </View>
+                  ))}
+                </Card>
+              ) : null}
+            </View>
+          ) : null}
         </>
       ) : null}
 
