@@ -140,7 +140,10 @@
       "storm": "Storm",
       "fog": "Fog",
       "hot": "Very hot"
-    }
+    },
+    "now": "Now",
+    "rainChance": "{{value}}% chance of rain",
+    "scrubHint": "Slide to see the whole day"
   },
   "scan": {
     "title": "Scan a leaf",

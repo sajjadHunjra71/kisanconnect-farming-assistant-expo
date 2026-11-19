@@ -19,5 +19,11 @@
 - Login guard: signed-out users go to welcome / sign-in. Settings shows the signed-in email, sign out and delete account.
 - Without keys in `.env` the app runs in **demo mode** exactly like Phase 0.
 
+## Motion pass (19 Nov 2026)
+Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respects Reduce Motion):
+- Weather: day slider. Scrub the hour ruler and the sky cross-fades dawn → day → dusk → night, sun/moon moves on an arc, rain appears for rainy hours, temperature rolls to the new value, haptic tick per hour.
+- Scan result: scan line sweeps the photo, then the result card pops in with a glare and the content arrives in a stagger.
+- Tasks: ticking a task pops the box, draws the tick, fires a small confetti burst and floats "+1".
+
 ## Next
 - Phase 2: Farm + crop data in SQLite + Supabase sync.

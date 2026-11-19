@@ -2,11 +2,10 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { Card, Icon, SampleDataNotice, Screen, ScreenHeader, SectionHeader, Text } from '@/components/ui';
-import { WeatherHero } from '@/features/home/components';
-import { AdvisoryCard, DailyRow, HourlyStrip, SprayWindow } from '@/features/weather/components';
+import { AdvisoryCard, DailyRow, DaySkyCard, SprayWindow } from '@/features/weather/components';
 import { useDirection } from '@/hooks/use-direction';
 import { useLocalized } from '@/hooks/use-localized';
-import { sampleAdvisories, sampleDaily, sampleFarm, sampleHourly, sampleWeatherNow } from '@/mocks/sample-data';
+import { sampleAdvisories, sampleDayHours, sampleDaily, sampleFarm, sampleWeatherNow } from '@/mocks/sample-data';
 import { useTheme } from '@/theme';
 
 const SPRAY_SLOTS = [
@@ -27,26 +26,28 @@ export default function WeatherScreen() {
   const l = useLocalized();
   const weekMin = Math.min(...sampleDaily.map((d) => d.minC));
   const weekMax = Math.max(...sampleDaily.map((d) => d.maxC));
+  const nowIndex = Math.min(sampleDayHours.length - 1, Math.max(0, new Date().getHours() - 6));
 
   return (
     <Screen withTabBar padded={false} header={<ScreenHeader title={t('weather.title')} subtitle={t('weather.subtitle', { district: l(sampleFarm.district) })} />}>
       <View style={{ paddingHorizontal: spacing.xl, gap: spacing.lg }}>
         <SampleDataNotice />
-        <WeatherHero weather={sampleWeatherNow} />
-      </View>
-
-      <View style={{ gap: spacing.md }}>
-        <View style={{ paddingHorizontal: spacing.xl }}>
-          <SectionHeader title={t('weather.hourly')} />
-        </View>
-        <HourlyStrip hours={sampleHourly} />
+        <DaySkyCard hours={sampleDayHours} startIndex={nowIndex} />
       </View>
 
       <View style={{ paddingHorizontal: spacing.xl, gap: spacing.xl }}>
         <SprayWindow slots={SPRAY_SLOTS} />
 
         <Card style={{ flexDirection: row, alignItems: 'center', gap: spacing.md }}>
-          <View style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.infoSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.md,
+              backgroundColor: colors.infoSoft,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
             <Icon name="water-outline" size={22} color="info" />
           </View>
           <View style={{ flex: 1 }}>

@@ -54,6 +54,20 @@ export const sampleHourly: HourlyForecast[] = [
   { hour: '22:00', tempC: 15, condition: 'rain', rainChance: 55 },
 ];
 
+/** Hour-by-hour sample for today (06:00 to 23:00), used by the day slider on the Weather screen. */
+export const sampleDayHours: HourlyForecast[] = [
+  [6, 12, 'fog', 5], [7, 13, 'fog', 5], [8, 15, 'partly-cloudy', 5], [9, 18, 'partly-cloudy', 5],
+  [10, 21, 'clear', 5], [11, 23, 'clear', 5], [12, 25, 'clear', 5], [13, 26, 'clear', 5],
+  [14, 26, 'clear', 10], [15, 25, 'partly-cloudy', 15], [16, 24, 'partly-cloudy', 20], [17, 22, 'cloudy', 30],
+  [18, 20, 'cloudy', 40], [19, 18, 'rain', 60], [20, 17, 'rain', 65], [21, 16, 'rain', 55],
+  [22, 15, 'cloudy', 30], [23, 14, 'cloudy', 20],
+].map(([h, tempC, condition, rainChance]) => ({
+  hour: `${String(h).padStart(2, '0')}:00`,
+  tempC: tempC as number,
+  condition: condition as HourlyForecast['condition'],
+  rainChance: rainChance as number,
+}));
+
 export const sampleDaily: DailyForecast[] = [
   { day: { en: 'Today', ur: 'آج' }, minC: 13, maxC: 26, condition: 'partly-cloudy', rainMm: 2 },
   { day: { en: 'Thu', ur: 'جمعرات' }, minC: 12, maxC: 22, condition: 'rain', rainMm: 9 },
