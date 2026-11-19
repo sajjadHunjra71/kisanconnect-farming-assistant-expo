@@ -1,4 +1,4 @@
-The 3D object images in this folder come from Microsoft Fluent Emoji
+The 3D object images in this folder (except cloud.png, tractor.png and cotton.png, which are our own) come from Microsoft Fluent Emoji
 (https://github.com/microsoft/fluentui-emoji), used under the MIT License.
 
 MIT License

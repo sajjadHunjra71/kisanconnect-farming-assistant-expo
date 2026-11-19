@@ -26,10 +26,11 @@ import { BRAND, LOGO_MARK } from './art';
  * while the logo lifts and the app fades in underneath. ~2.3 s, tap to skip, honours Reduce Motion.
  */
 
-// 3D objects from Microsoft Fluent Emoji (MIT, see assets/images/splash/LICENSE.md).
+// Cloud, tractor and cotton are our own renders; the rest are Microsoft Fluent Emoji 3D (MIT, see assets/images/splash/LICENSE.md).
 const IMAGES = {
   sunCloud: require('../../../assets/images/splash/sun_cloud.png'),
-  rainCloud: require('../../../assets/images/splash/rain_cloud.png'),
+  cloud: require('../../../assets/images/splash/cloud.png'),
+  cotton: require('../../../assets/images/splash/cotton.png'),
   droplet: require('../../../assets/images/splash/droplet.png'),
   wheat: require('../../../assets/images/splash/wheat.png'),
   tractor: require('../../../assets/images/splash/tractor.png'),
@@ -42,7 +43,6 @@ const IMAGES = {
   mango: require('../../../assets/images/splash/mango.png'),
   tomato: require('../../../assets/images/splash/tomato.png'),
   money: require('../../../assets/images/splash/money.png'),
-  potato: require('../../../assets/images/splash/potato.png'),
   carrot: require('../../../assets/images/splash/carrot.png'),
   sparkles: require('../../../assets/images/splash/sparkles.png'),
 } as const;
@@ -52,21 +52,21 @@ type Placement = { name: keyof typeof IMAGES; x: number; y: number; size: number
 // x/y are fractions of the screen; the layout keeps the centre clear for the logo.
 const PLACEMENTS: Placement[] = [
   { name: 'sunCloud', x: 0.78, y: 0.11, size: 112, rotate: 0 },
-  { name: 'rainCloud', x: 0.2, y: 0.09, size: 96, rotate: -6 },
+  { name: 'cloud', x: 0.22, y: 0.1, size: 120, rotate: 0 },
   { name: 'droplet', x: 0.5, y: 0.17, size: 50, rotate: 12 },
   { name: 'wheat', x: 0.12, y: 0.3, size: 96, rotate: -14 },
-  { name: 'tractor', x: 0.82, y: 0.32, size: 108, rotate: 6 },
+  { name: 'tractor', x: 0.8, y: 0.33, size: 150, rotate: 4 },
   { name: 'leaf', x: 0.36, y: 0.27, size: 64, rotate: 10 },
   { name: 'mango', x: 0.66, y: 0.24, size: 58, rotate: -18 },
   { name: 'sunflower', x: 0.12, y: 0.55, size: 92, rotate: 12 },
   { name: 'corn', x: 0.88, y: 0.56, size: 92, rotate: -14 },
-  { name: 'tomato', x: 0.3, y: 0.68, size: 66, rotate: -10 },
-  { name: 'chili', x: 0.7, y: 0.69, size: 70, rotate: 22 },
+  { name: 'tomato', x: 0.24, y: 0.69, size: 62, rotate: -10 },
+  { name: 'chili', x: 0.76, y: 0.7, size: 66, rotate: 22 },
   { name: 'buffalo', x: 0.2, y: 0.84, size: 112, rotate: 0 },
   { name: 'money', x: 0.8, y: 0.83, size: 90, rotate: 8 },
   { name: 'seedling', x: 0.5, y: 0.9, size: 80, rotate: 0 },
   { name: 'carrot', x: 0.9, y: 0.93, size: 58, rotate: -20 },
-  { name: 'potato', x: 0.08, y: 0.7, size: 54, rotate: 16 },
+  { name: 'cotton', x: 0.5, y: 0.7, size: 84, rotate: -8 },
   { name: 'sparkles', x: 0.56, y: 0.38, size: 40, rotate: 0 },
 ];
 
