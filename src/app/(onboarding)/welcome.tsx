@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { SvgXml } from 'react-native-svg';
 
-import { Button, Icon, Text } from '@/components/ui';
+import { LOGO_MARK } from '@/components/brand/art';
+import { Button, Text } from '@/components/ui';
 import { FieldIllustration } from '@/features/onboarding/components';
 import { useDirection } from '@/hooks/use-direction';
 import { useTheme } from '@/theme';
@@ -20,9 +22,7 @@ export default function WelcomeScreen() {
       <View style={{ borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, overflow: 'hidden' }}>
         <FieldIllustration height={360 + insets.top} />
         <View style={{ position: 'absolute', top: insets.top + spacing.lg, left: spacing.xl, right: spacing.xl, flexDirection: row, alignItems: 'center', gap: 8 }}>
-          <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="sprout" size={22} tint="#FFFFFF" />
-          </View>
+          <SvgXml xml={LOGO_MARK} width={36} height={36} />
           <Text variant="title" latin style={{ color: '#FFFFFF' }}>
             KisanConnect
           </Text>

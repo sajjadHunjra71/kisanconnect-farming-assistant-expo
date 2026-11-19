@@ -12,10 +12,11 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { BrandSplash } from '@/components/brand/BrandSplash';
 import { useLanguageSync } from '@/i18n/use-language-sync';
 import { useAuthStore } from '@/store/auth-store';
 import { useSettingsStore } from '@/store/settings-store';
@@ -53,6 +54,7 @@ export default function RootLayout() {
     NotoNastaliqUrdu_700Bold,
   });
   const ready = fontsLoaded && hydrated;
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
@@ -65,6 +67,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <RootStack />
+          {showSplash ? <BrandSplash onDone={() => setShowSplash(false)} /> : null}
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
