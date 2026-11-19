@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect } from 'react';
-import { Image, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Image } from 'expo-image';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -23,7 +24,7 @@ import { BRAND, LOGO_MARK } from './art';
 /**
  * Launch animation inspired by "burst" splash screens: on a harvest-yellow screen, 3D farm objects
  * fly out from behind the logo to their spots, float for a moment, then everything shrinks away
- * while the logo lifts and the app fades in underneath. ~2.3 s, tap to skip, honours Reduce Motion.
+ * while the logo lifts and the app fades in underneath. ~3.3 s, tap to skip, honours Reduce Motion.
  */
 
 // Cloud, tractor and cotton are our own renders; the rest are Microsoft Fluent Emoji 3D (MIT, see assets/images/splash/LICENSE.md).
@@ -71,17 +72,18 @@ const PLACEMENTS: Placement[] = [
 ];
 
 const LOGO = 112;
-const BURST_AT = 120;
-const EXIT_AT = 1500;
-const EXIT_MS = 520;
+const BURST_AT = 260; // logo squash before the burst
+const HOLD_MS = 2300; // time from burst to exit
+const EXIT_MS = 750;
+const LOAD_TIMEOUT = 1500; // start anyway if an image is slow to decode
 
-function BurstObject({ p, index, burst, exit, float, width, height }: { p: Placement; index: number; burst: SharedValue<number>; exit: SharedValue<number>; float: SharedValue<number>; width: number; height: number }) {
+function BurstObject({ p, index, burst, exit, float, width, height, onLoad }: { p: Placement; index: number; burst: SharedValue<number>; exit: SharedValue<number>; float: SharedValue<number>; width: number; height: number; onLoad: () => void }) {
   const dx = p.x * width - width / 2;
   const dy = p.y * height - height / 2;
-  const delay = index * 0.025; // stagger as a fraction of the burst
+  const delay = index * 0.03; // stagger as a fraction of the burst
   const style = useAnimatedStyle(() => {
     const t = Math.min(1, Math.max(0, (burst.value - delay) / (1 - delay)));
-    const bob = Math.sin(float.value * Math.PI * 2 + index) * 4;
+    const bob = Math.sin(float.value * Math.PI * 2 + index) * 5;
     return {
       opacity: interpolate(t, [0, 0.15], [0, 1]) * (1 - exit.value),
       transform: [
@@ -94,7 +96,7 @@ function BurstObject({ p, index, burst, exit, float, width, height }: { p: Place
   });
   return (
     <Animated.View pointerEvents="none" style={[styles.center, { width: p.size, height: p.size, marginLeft: -p.size / 2, marginTop: -p.size / 2 }, style]}>
-      <Image source={IMAGES[p.name]} style={{ width: p.size, height: p.size }} resizeMode="contain" />
+      <Image source={IMAGES[p.name]} style={{ width: p.size, height: p.size }} contentFit="contain" transition={0} cachePolicy="memory" onLoad={onLoad} onError={onLoad} />
     </Animated.View>
   );
 }
@@ -108,32 +110,48 @@ export function BrandSplash({ onDone }: { onDone: () => void }) {
   const exit = useSharedValue(0);
   const word = useSharedValue(0);
 
+  // Wait until every object image is decoded, so nothing pops in half-way through the burst.
+  const [loaded, setLoaded] = useState(false);
+  const count = useRef(0);
+  const onImageLoad = () => {
+    count.current += 1;
+    if (count.current >= PLACEMENTS.length) setLoaded(true);
+  };
+  useEffect(() => {
+    const id = setTimeout(() => setLoaded(true), LOAD_TIMEOUT);
+    return () => clearTimeout(id);
+  }, []);
+
+  const finished = useRef(false);
   const finish = () => {
+    if (finished.current) return;
+    finished.current = true;
     exit.value = withTiming(1, { duration: EXIT_MS, easing: Easing.inOut(Easing.cubic) }, (ok) => {
       if (ok) runOnJS(onDone)();
     });
   };
 
   useEffect(() => {
+    if (!loaded) return;
     if (reduced) {
       burst.value = 1;
       word.value = 1;
-      const id = setTimeout(finish, 700);
+      const id = setTimeout(finish, 900);
       return () => clearTimeout(id);
     }
-    logo.value = withSequence(withTiming(0.86, { duration: BURST_AT }), withSpring(1, { damping: 7, stiffness: 180 }));
-    burst.value = withDelay(BURST_AT, withSpring(1, { damping: 13, stiffness: 90, mass: 0.9 }));
-    word.value = withDelay(BURST_AT + 260, withTiming(1, { duration: 360 }));
-    float.value = withDelay(BURST_AT + 500, withRepeat(withTiming(1, { duration: 2400, easing: Easing.linear }), -1));
+    logo.value = withSequence(withTiming(0.84, { duration: BURST_AT, easing: Easing.out(Easing.quad) }), withSpring(1, { damping: 8, stiffness: 160 }));
+    burst.value = withDelay(BURST_AT, withSpring(1, { damping: 15, stiffness: 70, mass: 1 }));
+    word.value = withDelay(BURST_AT + 380, withTiming(1, { duration: 450, easing: Easing.out(Easing.cubic) }));
+    float.value = withDelay(BURST_AT + 700, withRepeat(withTiming(1, { duration: 3200, easing: Easing.linear }), -1));
     const hap = setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), BURST_AT);
-    const id = setTimeout(finish, EXIT_AT);
+    const id = setTimeout(finish, BURST_AT + HOLD_MS);
     return () => {
       clearTimeout(id);
       clearTimeout(hap);
     };
-    // Runs once on mount.
+    // Starts once, when the images are ready.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loaded]);
 
   const bg = useAnimatedStyle(() => ({ opacity: interpolate(exit.value, [0, 0.4, 1], [1, 1, 0]) }));
   const logoStyle = useAnimatedStyle(() => ({
@@ -146,7 +164,7 @@ export function BrandSplash({ onDone }: { onDone: () => void }) {
     <Animated.View style={[StyleSheet.absoluteFill, { zIndex: 1000 }, bg]}>
       <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: BRAND.splash }]} onPress={finish} accessibilityRole="button" accessibilityLabel="KisanConnect">
         {PLACEMENTS.map((p, i) => (
-          <BurstObject key={`${p.name}-${i}`} p={p} index={i} burst={burst} exit={exit} float={float} width={width} height={height} />
+          <BurstObject key={`${p.name}-${i}`} p={p} index={i} burst={burst} exit={exit} float={float} width={width} height={height} onLoad={onImageLoad} />
         ))}
         <Animated.View style={[styles.center, { width: LOGO, height: LOGO, marginLeft: -LOGO / 2, marginTop: -LOGO / 2 }, logoStyle]}>
           <View style={styles.logoShadow}>
