@@ -1,0 +1,103 @@
+/**
+ * Crop calendars and common varieties for Punjab.
+ *
+ * INDICATIVE ONLY: stage day ranges and variety lists are rough guides for the UI
+ * and reminders. They are not official advice and will be checked against
+ * Punjab Agriculture Department advisories before release.
+ *
+ * Pure data: no React Native imports, safe to use in tests and on the server.
+ */
+
+export const CROP_KEYS = ['wheat', 'rice', 'cotton', 'sugarcane', 'maize'] as const;
+export type CropId = (typeof CROP_KEYS)[number];
+
+export type EngineText = { en: string; ur?: string };
+
+export type CropStageDef = {
+  key: string;
+  name: EngineText;
+  startDay: number;
+  endDay: number;
+};
+
+export type CropCalendar = {
+  id: CropId;
+  name: EngineText;
+  /** MaterialCommunityIcons name. */
+  icon: string;
+  seasonDays: number;
+  stages: CropStageDef[];
+  varieties: string[];
+  indicative: true;
+};
+
+export function isCropId(value: string): value is CropId {
+  return (CROP_KEYS as readonly string[]).includes(value);
+}
+
+export const CROP_CALENDARS: Record<CropId, CropCalendar> = {
+  wheat: {
+    id: 'wheat',
+    name: { en: 'Wheat', ur: 'گندم' },
+    icon: 'barley',
+    seasonDays: 150,
+    stages: [
+      { key: 'germination', name: { en: 'Germination', ur: 'اگاؤ' }, startDay: 0, endDay: 20 },
+      { key: 'tillering', name: { en: 'Tillering', ur: 'شاخیں نکلنا' }, startDay: 21, endDay: 55 },
+      { key: 'jointing', name: { en: 'Jointing', ur: 'گانٹھیں بننا' }, startDay: 56, endDay: 80 },
+      { key: 'heading', name: { en: 'Heading', ur: 'سٹے نکلنا' }, startDay: 81, endDay: 105 },
+      { key: 'grain-fill', name: { en: 'Grain filling', ur: 'دانہ بھرنا' }, startDay: 106, endDay: 135 },
+      { key: 'maturity', name: { en: 'Maturity', ur: 'پکائی' }, startDay: 136, endDay: 150 },
+    ],
+    varieties: ['Akbar-2019', 'Dilkash-2020', 'Arooj-2022', 'Subhani-2021', 'Ghazi-2019', 'Faisalabad-2008', 'Galaxy-2013'],
+    indicative: true,
+  },
+  rice: {
+    id: 'rice',
+    name: { en: 'Rice', ur: 'چاول' },
+    icon: 'rice',
+    seasonDays: 130,
+    stages: [
+      { key: 'nursery', name: { en: 'Nursery', ur: 'پنیری' }, startDay: 0, endDay: 30 },
+      { key: 'tillering', name: { en: 'Tillering', ur: 'شاخیں نکلنا' }, startDay: 31, endDay: 65 },
+      { key: 'panicle', name: { en: 'Panicle initiation', ur: 'سٹہ بننا' }, startDay: 66, endDay: 95 },
+      { key: 'maturity', name: { en: 'Maturity', ur: 'پکائی' }, startDay: 96, endDay: 130 },
+    ],
+    varieties: ['Super Basmati', 'Basmati-515', 'Kissan Basmati', 'PK-1121 Aromatic', 'Punjab Basmati', 'KSK-133'],
+    indicative: true,
+  },
+  cotton: {
+    id: 'cotton',
+    name: { en: 'Cotton', ur: 'کپاس' },
+    icon: 'flower-poppy',
+    seasonDays: 170,
+    stages: [
+      { key: 'emergence', name: { en: 'Emergence', ur: 'اگاؤ' }, startDay: 0, endDay: 25 },
+      { key: 'squaring', name: { en: 'Squaring', ur: 'ڈوڈی بننا' }, startDay: 26, endDay: 60 },
+      { key: 'flowering', name: { en: 'Flowering', ur: 'پھول آنا' }, startDay: 61, endDay: 110 },
+      { key: 'boll-opening', name: { en: 'Boll opening', ur: 'ٹینڈے کھلنا' }, startDay: 111, endDay: 170 },
+    ],
+    varieties: ['FH-142', 'IUB-13', 'MNH-886', 'CIM-663', 'FH-Lalazar', 'BS-15'],
+    indicative: true,
+  },
+  sugarcane: {
+    id: 'sugarcane',
+    name: { en: 'Sugarcane', ur: 'گنا' },
+    icon: 'grass',
+    seasonDays: 330,
+    stages: [{ key: 'growth', name: { en: 'Growth', ur: 'بڑھوتری' }, startDay: 0, endDay: 330 }],
+    varieties: ['CPF-249', 'CPF-253', 'CPF-246', 'HSF-240', 'SPF-234'],
+    indicative: true,
+  },
+  maize: {
+    id: 'maize',
+    name: { en: 'Maize', ur: 'مکئی' },
+    icon: 'corn',
+    seasonDays: 110,
+    stages: [{ key: 'growth', name: { en: 'Growth', ur: 'بڑھوتری' }, startDay: 0, endDay: 110 }],
+    varieties: ['YH-1898', 'FH-1046', 'Pioneer 30Y87', 'DK-6714', 'Sahiwal-2002'],
+    indicative: true,
+  },
+};
+
+export const PRIMARY_CROPS: CropId[] = [...CROP_KEYS];

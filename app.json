@@ -41,7 +41,16 @@
       ],
       "expo-font",
       "expo-localization",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-sqlite",
+      "@react-native-community/datetimepicker",
+      "expo-sharing",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "KisanConnect uses your location to set your farm on the map and show local weather and advice."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

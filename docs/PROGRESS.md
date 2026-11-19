@@ -25,5 +25,13 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - Scan result: scan line sweeps the photo, then the result card pops in with a glare and the content arrives in a stagger.
 - Tasks: ticking a task pops the box, draws the tick, fires a small confetti burst and floats "+1".
 
+## Phase 2A: Farm data, local storage, crop engine (code done, 20 Nov 2026)
+- Supabase migration `supabase/migrations/20261121000000_farms_crops_activities.sql`: `farms`, `crops`, `activities` with client-made uuids, `version` + `last_op_id` for compare-and-set sync, soft delete (`deleted_at`, no undelete, parent → children cascade), generated `area_acres`, composite FKs so a crop/activity can only point at the same user's farm (and an activity's crop must be on the same farm). RLS: own rows only, no delete policy.
+- `supabase/tests/rls_farms.sql`: 14 checks in one rolled-back transaction (cross-user read/write, crop under someone else's farm, crop on another farm, stale CAS = 0 rows, no undelete, soft and hard delete cascades). Ran green against a local Postgres with a stubbed `auth` schema; run it again on the real Supabase DB once linked.
+- `src/engine/` (pure TS, no React Native): crop calendars + common Punjab varieties (marked indicative), stage from sowing date in LOCAL calendar days (planned / growing / completed), area units → acres, date helpers. `src/mocks/crops.ts` re-exports it so screens are unchanged.
+- `src/db/`: per-user SQLite file `kisan-<userId>.db` (demo mode / web → in-memory sample data). Tables: farms, crops, activities, `outbox`, `sync_state`. `farmsRepo` / `cropsRepo` / `activitiesRepo` write the row and its outbox entry in one exclusive transaction; entries are coalesced (pure `coalesceOutbox`) so a row has at most one unsent op. Input validation mirrors the server checks.
+- New deps: expo-sqlite, netinfo, datetimepicker, expo-location (when-in-use message in app.json), expo-sharing; jest + jest-expo (`npm test`, 22 tests).
+- Not yet: push/pull sync (2B), farm/crop/activity screens wired to the repos.
+
 ## Next
-- Phase 2: Farm + crop data in SQLite + Supabase sync.
+- Phase 2B: outbox push + cursor pull sync with Supabase, then wire farm screens to the repos.

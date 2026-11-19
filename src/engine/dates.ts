@@ -1,0 +1,52 @@
+/**
+ * Calendar-date helpers. A farm date ("sown on 10 Nov") is a LOCAL calendar day,
+ * not an instant, so we never let UTC conversion shift it by a day.
+ * Dates are stored as 'YYYY-MM-DD'.
+ */
+
+export type LocalDate = string; // 'YYYY-MM-DD'
+
+const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export function isLocalDate(value: string): value is LocalDate {
+  const m = DATE_RE.exec(value);
+  if (!m) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const dt = new Date(y, mo - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
+}
+
+/** 'YYYY-MM-DD' → local midnight. A full ISO timestamp is read as the local day it falls on. */
+export function parseLocalDate(value: string): Date {
+  const m = DATE_RE.exec(value);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) throw new Error(`Invalid date: ${value}`);
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+}
+
+export function toLocalDate(date: Date): LocalDate {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function todayLocal(now: Date = new Date()): LocalDate {
+  return toLocalDate(now);
+}
+
+/** Whole calendar days from `from` to `to` (negative if `to` is earlier). DST-safe. */
+export function daysBetween(from: string | Date, to: string | Date): number {
+  const a = typeof from === 'string' ? parseLocalDate(from) : from;
+  const b = typeof to === 'string' ? parseLocalDate(to) : to;
+  const ua = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const ub = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((ub - ua) / 86_400_000);
+}
+
+export function addDays(date: string, days: number): LocalDate {
+  const d = parseLocalDate(date);
+  d.setDate(d.getDate() + days);
+  return toLocalDate(d);
+}

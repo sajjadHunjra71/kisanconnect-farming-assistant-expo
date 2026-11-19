@@ -1,7 +1,9 @@
 import type { IconName } from '@/components/ui/Icon';
 import type { Localized } from '@/hooks/use-localized';
 
-export type CropId = 'wheat' | 'rice' | 'cotton' | 'sugarcane' | 'maize';
+import type { CropId } from '@/engine/crops-data';
+
+export type { CropId };
 
 export type CropStage = {
   key: string;
