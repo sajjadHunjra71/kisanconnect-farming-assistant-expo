@@ -2,6 +2,7 @@ import type { AuthError } from '@supabase/supabase-js';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 
 import { AuthServiceError, requireSupabase, type AuthErrorCode } from '@/lib/supabase';
 
@@ -53,10 +54,15 @@ export async function updatePassword(password: string) {
   if (error) throw mapError(error);
 }
 
+const GOOGLE_REDIRECT = 'kisanconnect://auth/callback';
+
 /** Browser-based Google sign-in (no native SDK, so it works in Expo Go and without an Xcode build). */
 export async function signInWithGoogle() {
   const supabase = requireSupabase();
-  const redirectTo = authRedirectUrl();
+  // Always return to the app's own scheme. The in-app auth browser (ASWebAuthenticationSession / Custom Tabs)
+  // catches kisanconnect:// itself, so this also works inside Expo Go, whose exp://<LAN-IP> addresses
+  // Supabase's redirect allow-list does not accept.
+  const redirectTo = Platform.OS === 'web' ? authRedirectUrl() : GOOGLE_REDIRECT;
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } },
