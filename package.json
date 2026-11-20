@@ -68,7 +68,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "npx expo-doctor",
     "test": "jest",
-    "sync-shared": "node scripts/sync-shared.js"
+    "sync-engine": "node scripts/sync-engine.js"
   },
   "private": true,
   "jest": {

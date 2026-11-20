@@ -157,7 +157,13 @@
     "setLocation": "Set farm location",
     "loadFailed": "Couldn't load the forecast. Pull down to try again.",
     "noFarm": "Add a farm to see weather for it.",
-    "indicative": "Advice uses simple rules and is a guide only."
+    "indicative": "Advice uses simple rules and is a guide only.",
+    "outlook": "Outlook (less certain)",
+    "oldForecast": "Old forecast: last updated more than a day ago. Advice is hidden until it refreshes.",
+    "limitedData": "Some weather data is missing, so some advice is limited.",
+    "howTitle": "How is this worked out?",
+    "howBody": "Spray: good when wind is 3–15 km/h, gusts under 25, under 35 °C and no rain likely for 6 hours, between 5 AM and 7 PM. Irrigation: the crop's daily water use (ET₀ × crop factor for its stage) is added up from your last logged irrigation, minus useful rain (80% of days with 5 mm or more). When the used water reaches what the roots can easily take from your soil type, irrigation is due. Rice is kept flooded. All advice is a guide only.",
+    "sprayCaution": "Care"
   },
   "scan": {
     "title": "پتا اسکین کریں",
@@ -505,16 +511,25 @@
     "sprayReason": {
       "rain": "Rain is expected, so spray would wash off.",
       "wind": "Wind is too strong, so spray would drift.",
-      "heat": "It's too hot, so spray would evaporate."
+      "gust": "Gusts are too strong, so spray would drift.",
+      "heat": "It's too hot, so spray would evaporate.",
+      "calm": "The air is very still: spray mist can hang and drift. Spray with care.",
+      "dry-air": "The air is very dry: spray dries fast. Spray with care.",
+      "rain-unknown": "The chance of rain is not known for these hours. Check the sky before spraying.",
+      "no-data": "Some weather data is missing for these hours."
     },
     "alert": {
-      "heat": {
-        "title": "Heatwave: up to {{value}}°C",
+      "heatwave": {
+        "title": "Heatwave: up to {{value}}°C for 2 or more days",
         "body": "Irrigate in the evening or early morning and don't spray in the afternoon."
       },
+      "heat-stress": {
+        "title": "Heat stress for {{crop}}: {{value}}°C",
+        "body": "This is a sensitive stage. A light evening irrigation helps; don't spray in the heat."
+      },
       "frost": {
-        "title": "Frost risk: down to {{value}}°C",
-        "body": "A light irrigation the evening before helps protect wheat and young crops."
+        "title": "Frost risk for {{crop}}: down to {{value}}°C",
+        "body": "A light irrigation the evening before helps protect the crop."
       },
       "heavy-rain": {
         "title": "Heavy rain: about {{value}} mm",
@@ -522,24 +537,41 @@
       },
       "strong-wind": {
         "title": "Strong wind: gusts up to {{value}} km/h",
-        "body": "Don't spray. Tall crops like sugarcane and maize may fall over."
+        "body": "Don't spray. Tall crops may fall over."
+      },
+      "fog": {
+        "title": "Fog expected",
+        "body": "Low visibility on the roads. Long wet leaves favour fungal disease; wait with spraying until it clears."
       }
     },
     "disease": {
       "wheat-yellow-rust": {
         "title": "Yellow rust weather for wheat",
-        "body": "Cool and humid for about {{hours}} hours in the next 3 days. Check lower leaves for yellow stripes."
+        "body": "Cool, humid or rainy days ahead. Check lower leaves for yellow stripes."
       },
       "rice-blast": {
         "title": "Rice blast weather",
-        "body": "Warm and very humid for about {{hours}} hours in the next 3 days. Look for eye-shaped spots on leaves."
+        "body": "Several warm, very humid nights ahead. Look for eye-shaped spots on leaves."
       },
       "cotton-boll-rot": {
         "title": "Boll rot weather for cotton",
-        "body": "A long humid spell (about {{hours}} hours). Check opening bolls for rot."
+        "body": "Rain followed by warm, humid hours. Check opening bolls for rot and the leaves for blight spots."
       }
     },
     "irrigation": {
+      "rice": {
+        "title": "{{crop}}: keep standing water",
+        "body": "Keep about 5–7 cm of water in the field and top it up when it's gone.",
+        "rain": "About {{mm}} mm of rain is expected in the next 3 days, so no top-up is needed until then."
+      },
+      "logNeeded": {
+        "title": "Log the last irrigation of {{crop}}",
+        "body": "Then the app can work out when it needs water next."
+      },
+      "limited": {
+        "title": "Not enough weather data for {{crop}}",
+        "body": "Irrigation advice needs recent weather back to the last irrigation (up to 30 days). Log a recent irrigation or try again later."
+      },
       "skip": {
         "title": "Skip irrigation for {{crop}}",
         "body": "About {{mm}} mm of rain is expected in the next 3 days. The crop uses about {{need}} mm a day."
@@ -551,7 +583,39 @@
       },
       "ok_one": "{{crop}}: next irrigation in about {{count}} day",
       "ok_other": "{{crop}}: next irrigation in about {{count}} days",
-      "body": "The crop uses about {{need}} mm of water a day; about {{used}} mm used since the last irrigation or rain."
-    }
+      "okLater_one": "{{crop}}: no irrigation needed for at least {{count}} day",
+      "okLater_other": "{{crop}}: no irrigation needed for at least {{count}} days",
+      "body": "The crop uses about {{need}} mm of water a day. About {{used}} of {{raw}} mm of easily usable water is used since the last irrigation or rain."
+    },
+    "logIrrigation": "Log irrigation",
+    "openScan": "Scan a leaf"
+  },
+  "alerts": {
+    "title": "Weather alerts",
+    "empty": "No alerts right now. Heat, frost, heavy rain, strong wind, fog and disease-weather warnings for your farms will show here.",
+    "markAll": "Mark all read",
+    "bellA11y_one": "Weather alerts, {{count}} unread",
+    "bellA11y_other": "Weather alerts, {{count}} unread",
+    "bellA11yNone": "Weather alerts",
+    "askTitle": "Get weather alerts?",
+    "askBody": "KisanConnect can warn you about frost, heatwaves, heavy rain, strong wind, fog and disease weather for your farm. You can change this any time in Settings.",
+    "allow": "Allow",
+    "notNow": "Not now",
+    "forDate": "For {{date}}",
+    "kinds": {
+      "heatwave": "Heatwave",
+      "heat-stress": "Crop heat stress",
+      "frost": "Frost",
+      "heavy-rain": "Heavy rain",
+      "strong-wind": "Strong wind",
+      "fog": "Fog",
+      "disease": "Disease weather"
+    },
+    "settingsTitle": "Alert types",
+    "quietHours": "Quiet hours",
+    "quietBody": "Alerts that arrive in quiet hours are sent when they end.",
+    "quietFrom": "From",
+    "quietTo": "Until",
+    "saveFailed": "Couldn't save. Check your internet and try again."
   }
 }

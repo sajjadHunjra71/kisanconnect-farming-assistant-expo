@@ -13,6 +13,7 @@ import { useAuthAction } from '@/features/auth/use-auth-action';
 import { LanguagePicker } from '@/features/settings/components';
 import { confirmSignOut } from '@/features/sync/confirm-sign-out';
 import { SyncSettingsSection } from '@/features/sync/components';
+import { AlertPrefsSection } from '@/features/notifications/AlertPrefsSection';
 import { useAuthStore } from '@/store/auth-store';
 import { useSettingsStore, type ThemeMode, type Units } from '@/store/settings-store';
 import { useTheme } from '@/theme';
@@ -139,6 +140,8 @@ export default function SettingsScreen() {
           ))}
         </Card>
       </View>
+
+      {signedIn ? <AlertPrefsSection /> : null}
 
       {signedIn ? <SyncSettingsSection /> : null}
 

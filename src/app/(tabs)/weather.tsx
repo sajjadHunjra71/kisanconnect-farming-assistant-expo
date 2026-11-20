@@ -27,8 +27,10 @@ export default function WeatherScreen() {
   };
 
   const place = w.farm ? districtLabel(w.farm.district, language, w.farm.name) : '';
-  const weekMin = v ? Math.min(...v.daily.map((d) => d.minC)) : 0;
-  const weekMax = v ? Math.max(...v.daily.map((d) => d.maxC)) : 0;
+  const all = v ? [...v.days, ...v.outlook] : [];
+  const weekMin = all.length ? Math.min(...all.map((d) => d.minC)) : 0;
+  const weekMax = all.length ? Math.max(...all.map((d) => d.maxC)) : 0;
+  const [showHow, setShowHow] = useState(false);
 
   return (
     <Screen
@@ -59,7 +61,13 @@ export default function WeatherScreen() {
 
       {v ? (
         <View style={{ paddingHorizontal: spacing.xl, gap: spacing.xl }}>
-          {v.spray.length > 0 ? <SprayWindow slots={v.spray.map((s) => ({ label: s.time.slice(11, 13), ok: s.ok }))} /> : null}
+          {v.old ? <Badge label={t('weather.oldForecast')} tone="warning" icon="clock-alert-outline" /> : null}
+          {v.limited && !v.old ? (
+            <Text variant="caption" color="warning">
+              {t('weather.limitedData')}
+            </Text>
+          ) : null}
+          {v.spray.length > 0 ? <SprayWindow slots={v.spray.map((s) => ({ label: s.time.slice(11, 13), status: s.status }))} /> : null}
 
           <Card style={{ flexDirection: row, alignItems: 'center', gap: spacing.md }}>
             <View style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.infoSoft, alignItems: 'center', justifyContent: 'center' }}>
@@ -78,11 +86,22 @@ export default function WeatherScreen() {
           <View style={{ gap: spacing.sm }}>
             <SectionHeader title={t('weather.daily')} />
             <Card style={{ paddingVertical: spacing.sm }}>
-              {v.daily.map((d, i) => (
+              {v.days.map((d, i) => (
                 <DailyRow key={`${d.day.en}-${i}`} day={d} weekMin={weekMin} weekMax={weekMax} />
               ))}
             </Card>
           </View>
+
+          {v.outlook.length > 0 ? (
+            <View style={{ gap: spacing.sm }}>
+              <SectionHeader title={t('weather.outlook')} />
+              <Card style={{ paddingVertical: spacing.sm, opacity: 0.85 }}>
+                {v.outlook.map((d, i) => (
+                  <DailyRow key={`o-${d.day.en}-${i}`} day={d} weekMin={weekMin} weekMax={weekMax} />
+                ))}
+              </Card>
+            </View>
+          ) : null}
 
           <View style={{ gap: spacing.md }}>
             <SectionHeader title={t('weather.advisories')} />
@@ -92,7 +111,21 @@ export default function WeatherScreen() {
             <Text variant="caption" color="inkSubtle">
               {t('weather.indicative')}
             </Text>
+            <Card tone="surfaceAlt" onPress={() => setShowHow((x) => !x)} accessibilityLabel={t('weather.howTitle')} style={{ gap: spacing.xs }}>
+              <Text variant="label" color="primary">
+                {t('weather.howTitle')}
+              </Text>
+              {showHow ? (
+                <Text variant="caption" color="inkMuted">
+                  {t('weather.howBody')}
+                </Text>
+              ) : null}
+            </Card>
           </View>
+
+          <Text variant="caption" color="inkSubtle" align="center" latin>
+            {v.attribution}
+          </Text>
         </View>
       ) : null}
     </Screen>

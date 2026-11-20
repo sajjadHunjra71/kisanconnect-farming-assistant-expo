@@ -8,7 +8,7 @@ import { useSettingsStore } from '@/store/settings-store';
 
 import { registerForWeatherPush, unregisterWeatherPush } from './push';
 
-/** Keeps this phone's push registration in step with sign-in and the Settings toggle. */
+/** Keeps this phone's push registration in step with sign-in and the Settings toggle (never prompts). */
 export function usePushAlerts() {
   const userId = useAuthStore((s) => (s.status === 'signedIn' ? (s.session?.user.id ?? null) : null));
   const enabled = useSettingsStore((s) => s.notifications.weather);

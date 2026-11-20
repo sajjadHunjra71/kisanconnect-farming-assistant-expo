@@ -10,6 +10,7 @@ import { createSampleRepos } from './sample-repos';
 import type { Repos } from './types';
 
 export * from './types';
+export type { AlertRecord, AlertsLocal } from './alerts-local';
 export { NotFoundError } from './repo-core';
 export { ValidationError } from './validate';
 
@@ -25,11 +26,12 @@ export function dbFileName(userId: string): string {
 async function openSqlite(userId: string): Promise<{ repos: Repos; close: () => Promise<void> }> {
   const SQLite = await import('expo-sqlite');
   const { createSqliteStore, migrate } = await import('./sqlite-store');
+  const { createSqliteAlerts } = await import('./sqlite-alerts');
   const db = await SQLite.openDatabaseAsync(dbFileName(userId));
   await migrate(db);
   const store = createSqliteStore(db);
   const repos = createRepos(store, { userId, newId: () => Crypto.randomUUID(), emitWrites: true });
-  return { repos: { kind: 'sqlite', store, userId, ...repos }, close: () => db.closeAsync() };
+  return { repos: { kind: 'sqlite', store, userId, alertsLocal: createSqliteAlerts(db), ...repos }, close: () => db.closeAsync() };
 }
 
 /** Repos for the signed-in user (null = demo). Reuses the open database for the same user. */

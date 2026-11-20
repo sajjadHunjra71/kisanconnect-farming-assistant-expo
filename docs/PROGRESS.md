@@ -79,5 +79,15 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - Checks: 85 unit tests; push SQL tested on local Postgres; Edge Functions type-checked with a Deno stub (no Deno/Supabase CLI on this Mac, so not deployed or run yet).
 - Needs from you: deploy (supabase/README.md steps 2, 5, 6) and `eas init` for push tokens. See docs/TESTING-PHASE3.md.
 
+## Phase 3: aligned with the audited plan v2 (20 Nov 2026)
+- Engine: relative imports only (test), `npm run sync-engine` copies all of `src/engine` to `supabase/functions/_shared/engine` (test checks the copy).
+- Open-Meteo: 14 days + 30 past days, apparent temperature, visibility; missing values are `null` ("limited data"), never 0. MET Norway fallback (User-Agent with app + repo, m/s → km/h, UTC → Karachi, Hargreaves ET₀, ≤ 4 dp). Attribution on the Weather screen; days 8–14 as "Outlook (less certain)".
+- Spray: 05–19 h, gusts > 25 avoid, caution for calm (< 3 km/h), dry air (< 40%) or unknown rain chance.
+- Irrigation: full FAO-56 bucket (Kc ini/dev/mid/late, root depth, p, soil TAW, RAW); asks to log the last irrigation instead of counting from sowing for crops older than 20 days; rice standing-water rule; "How is this worked out?" note.
+- Alerts and disease rules per the audited thresholds (heatwave 45 °C × 2 days, crop heat stress, frost by crop/stage, heavy rain 35 mm, gusts 50, fog; rust Dec–Mar, blast 3 humid nights, boll rot after rain).
+- Server: `config.toml` (verify_jwt off, functions check callers), deploy with `--use-api`, cron secret in Vault checked by `check_cron_secret()` (service role only, constant-time), daily purge, `rate_limits` + `bump_rate_limit()`, cache key = cell + provider + schema version, no coordinates in logs. `alerts` table (dedupe key, inbox, read_at only writable), `push_tickets`, `job_state` (farm cursor), `profiles.notification_prefs`. `supabase/tests/rls_weather.sql` (14 checks) passes on local Postgres.
+- App: forecast cache per user + farm, cleared on sign-out; >24 h → "Old forecast", advice hidden. Alerts inbox + bell with unread count; read marks queued offline; local notification for alerts not pushed (works in the simulator); permission asked after the first farm is saved; Settings → alert types + quiet hours.
+- 109 unit tests.
+
 ## Next
 - Run docs/TESTING-PHASE2.md and docs/TESTING-PHASE3.md on the real Supabase project, then Phase 4.

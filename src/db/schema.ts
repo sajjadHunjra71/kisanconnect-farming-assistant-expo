@@ -80,6 +80,27 @@ export const MIGRATIONS: string[] = [
     cursor_id text
   );
   `,
+  // v2: weather alerts inbox + small key/value table
+  `
+  create table if not exists alerts (
+    id text primary key not null,
+    farm_id text not null,
+    crop_id text,
+    kind text not null,
+    severity text not null,
+    title text not null,
+    body text not null,
+    start_date text not null,
+    created_at text not null,
+    updated_at text not null,
+    pushed_at text,
+    read_at text,
+    read_dirty integer not null default 0,
+    notified_at text
+  );
+  create index if not exists alerts_updated_idx on alerts (updated_at, id);
+  create table if not exists kv (key text primary key not null, value text not null);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

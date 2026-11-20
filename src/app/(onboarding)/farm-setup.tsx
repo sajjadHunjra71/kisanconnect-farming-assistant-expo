@@ -5,6 +5,7 @@ import { View } from 'react-native';
 
 import { Button, Chip, FormError, Screen, ScreenHeader, SegmentedControl, Text, TextField } from '@/components/ui';
 import { openRepos } from '@/db';
+import { askForAlerts } from '@/features/notifications/ask-for-alerts';
 import { AREA_UNITS, addDays, districtByName, todayLocal, type AreaUnit } from '@/engine';
 import { CropPicker } from '@/features/farm/components';
 import { StepDots } from '@/features/onboarding/components';
@@ -70,6 +71,7 @@ export default function FarmSetupScreen() {
       setSaving(true);
       try {
         if (!(await saveFarm(userId))) return;
+        await askForAlerts(t);
       } catch {
         setSaveError(t('farm.form.errors.saveFailed'));
         return;

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { CROP_CALENDARS, districtByName, localHour, type CropId } from '@/engine';
+import { CROP_CALENDARS, OLD_FORECAST_MINUTES, ageMinutes, districtByName, limitedData, localHour, type CropId } from '@/engine';
 import { useRepoQuery } from '@/features/farm/hooks';
 import type { Localized } from '@/hooks/use-localized';
 import i18n from '@/i18n';
+import { useAuthStore } from '@/store/auth-store';
 import { useSettingsStore } from '@/store/settings-store';
 
-import { buildAdvisories, dailyForecast, dayHours, spraySlots, weatherNow, type Tr } from './build';
+import { ATTRIBUTION, buildAdvisories, dailyForecast, dayHours, spraySlots, weatherNow, type Tr } from './build';
 import { getForecast, type ForecastResult } from './weather-service';
 
 /** Same text in both app languages (for Localized fields). */
@@ -30,6 +31,7 @@ function dayName(date: string, isToday: boolean): Localized {
 /** Forecast + advice for the selected farm (sample forecast in demo mode). */
 export function useFarmWeather() {
   const language = useSettingsStore((s) => s.language);
+  const userId = useAuthStore((s) => (s.status === 'signedIn' ? (s.session?.user.id ?? null) : null));
   const selectedFarmId = useSettingsStore((s) => s.selectedFarmId);
   const { data, isSample, loading: farmLoading } = useRepoQuery(
     async (repos) => {
@@ -57,7 +59,8 @@ export function useFarmWeather() {
       if (!point && !isSample) return;
       setLoading(true);
       try {
-        setResult(await getForecast(point ?? { lat: 31.4, lng: 73.1 }, { force, demo: isSample }));
+        const p = point ?? { lat: 31.4, lng: 73.1 };
+        setResult(await getForecast({ userId, farmId: farm?.id ?? 'demo', lat: p.lat, lng: p.lng }, { force, demo: isSample }));
         setError(false);
       } catch {
         setError(true);
@@ -65,7 +68,7 @@ export function useFarmWeather() {
         setLoading(false);
       }
     },
-    [point, isSample],
+    [point, isSample, userId, farm?.id],
   );
 
   useEffect(() => {
@@ -77,22 +80,32 @@ export function useFarmWeather() {
     const f = result.forecast;
     const nowHour = localHour(f, new Date());
     const today = nowHour.slice(0, 10);
+    const old = ageMinutes(f, new Date()) > OLD_FORECAST_MINUTES;
+    const hours = dayHours(f, today);
     return {
       now: weatherNow(f, nowHour),
-      hours: dayHours(f, today),
-      nowIndex: Math.max(0, dayHours(f, today).findIndex((h) => h.hour === nowHour.slice(11, 16))),
-      daily: dailyForecast(f, today, dayName),
-      spray: spraySlots(f, nowHour),
-      advisories: buildAdvisories({
-        forecast: f,
-        nowHour,
-        today,
-        crops: data?.crops ?? [],
-        activities: data?.activities ?? [],
-        tr,
-        cropName: (c: CropId) => (language === 'ur' ? (CROP_CALENDARS[c].name.ur ?? CROP_CALENDARS[c].name.en) : CROP_CALENDARS[c].name.en),
-        hourLabel: (time) => time.slice(11, 16),
-      }),
+      hours,
+      nowIndex: Math.max(0, hours.findIndex((h) => h.hour === nowHour.slice(11, 16))),
+      ...dailyForecast(f, today, dayName),
+      spray: old ? [] : spraySlots(f, nowHour),
+      old,
+      limited: limitedData(f, nowHour).filter((x) => x !== 'visibilityM').length > 0,
+      attribution: ATTRIBUTION[f.provider],
+      // Advice needs a fresh forecast: hidden when it's more than a day old.
+      advisories: old
+        ? []
+        : buildAdvisories({
+            forecast: f,
+            nowHour,
+            today,
+            farmId: data?.farm?.id ?? 'demo',
+            soil: data?.farm?.soil_type ?? null,
+            crops: data?.crops ?? [],
+            activities: data?.activities ?? [],
+            tr,
+            cropName: (c: CropId) => (language === 'ur' ? (CROP_CALENDARS[c].name.ur ?? CROP_CALENDARS[c].name.en) : CROP_CALENDARS[c].name.en),
+            hourLabel: (time) => time.slice(11, 16),
+          }),
     };
   }, [result, data, language]);
 

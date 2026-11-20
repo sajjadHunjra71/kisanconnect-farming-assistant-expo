@@ -1,6 +1,8 @@
+import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Icon, Text } from '@/components/ui';
+import { Button, Icon, Text } from '@/components/ui';
 import { useDirection } from '@/hooks/use-direction';
 import { useLocalized } from '@/hooks/use-localized';
 import { useTheme } from '@/theme';
@@ -16,6 +18,7 @@ const kindIcon: Record<AdvisoryKind, IconName> = {
   frost: 'snowflake',
   rain: 'weather-pouring',
   wind: 'weather-windy',
+  fog: 'weather-fog',
 };
 
 export function AdvisoryCard({ advisory }: { advisory: Advisory }) {
@@ -23,10 +26,17 @@ export function AdvisoryCard({ advisory }: { advisory: Advisory }) {
   const { row } = useDirection();
   const l = useLocalized();
   const tone = severityTone[advisory.severity];
+  const { t } = useTranslation();
+  const action = advisory.action;
+  const runAction = () => {
+    if (!action) return;
+    if (action.kind === 'scan') router.push('/(tabs)/scan');
+    else router.push({ pathname: '/activity/edit', params: { farmId: action.farmId, cropId: action.cropId, type: 'irrigation' } });
+  };
 
   return (
     <View
-      accessible
+      accessible={!action}
       accessibilityLabel={`${l(advisory.title)}. ${l(advisory.body)}`}
       style={{ flexDirection: row, gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
       <View style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors[tone.bg], alignItems: 'center', justifyContent: 'center' }}>
@@ -40,6 +50,17 @@ export function AdvisoryCard({ advisory }: { advisory: Advisory }) {
         <Text variant="caption" color="inkSubtle" latin>
           {advisory.source}
         </Text>
+        {action ? (
+          <Button
+            label={action.kind === 'scan' ? t('advice.openScan') : t('advice.logIrrigation')}
+            icon={action.kind === 'scan' ? 'line-scan' : 'water-plus-outline'}
+            variant="secondary"
+            size="md"
+            fullWidth={false}
+            onPress={runAction}
+            style={{ alignSelf: 'flex-start', marginTop: 4 }}
+          />
+        ) : null}
       </View>
     </View>
   );

@@ -1,27 +1,129 @@
 /**
- * Crop coefficients (Kc) per growth stage and readily available water (RAW) per crop,
- * rounded from FAO-56 tables (Allen et al. 1998, tables 12 and 22) for typical Punjab
- * conditions. INDICATIVE only: soil type, irrigation method and variety change them.
+ * Irrigation advice from an FAO-56 root-zone water balance (Allen et al. 1998).
+ * INDICATIVE only: real needs depend on soil, irrigation method and variety.
+ *
+ *   Kc:   Kc_ini during the initial period, straight line up to Kc_mid through
+ *         development, Kc_mid in mid-season, straight line down to Kc_end in the late period.
+ *   Zr:   root depth grows from Zr_min at sowing to Zr_max at the start of mid-season.
+ *   TAW = (water held per metre of soil) × Zr;  RAW = p × TAW.
+ *   Each day: deficit += ET0 × Kc − effective rain (never below 0 = field capacity).
+ *   Irrigation is due when deficit ≥ RAW.
  */
 import { CROP_CALENDARS, type CropId } from './crops-data';
+import { daysBetween } from './dates';
+import { effectiveRain, type Forecast } from './weather-rules';
 
-export const STAGE_KC: Record<CropId, Record<string, number>> = {
-  wheat: { germination: 0.4, tillering: 0.75, jointing: 1.1, heading: 1.15, 'grain-fill': 0.9, maturity: 0.4 },
-  rice: { nursery: 1.05, tillering: 1.1, panicle: 1.2, maturity: 0.9 },
-  cotton: { emergence: 0.35, squaring: 0.75, flowering: 1.15, 'boll-opening': 0.7 },
-  sugarcane: { growth: 1.0 },
-  maize: { growth: 0.9 },
+export type CropWater = {
+  kcIni: number;
+  kcMid: number;
+  kcEnd: number;
+  /** Day (from sowing) development / mid-season / late season start; aligned with our stage table. */
+  devStart: number;
+  midStart: number;
+  lateStart: number;
+  zrMin: number; // m
+  zrMax: number; // m
+  p: number; // fraction of TAW usable without stress
 };
 
-/** Readily available water before stress, mm (root depth × available water × p). */
-export const RAW_MM: Record<CropId, number> = {
-  wheat: 55,
-  rice: 25, // kept flooded: short interval between irrigations
-  cotton: 70,
-  sugarcane: 65,
-  maize: 50,
+export const CROP_WATER: Record<CropId, CropWater> = {
+  // germination | tillering + jointing | heading + grain fill | maturity
+  wheat: { kcIni: 0.4, kcMid: 1.15, kcEnd: 0.3, devStart: 21, midStart: 81, lateStart: 136, zrMin: 0.3, zrMax: 1.2, p: 0.55 },
+  // emergence | squaring | flowering | boll opening
+  cotton: { kcIni: 0.35, kcMid: 1.15, kcEnd: 0.6, devStart: 26, midStart: 61, lateStart: 111, zrMin: 0.3, zrMax: 1.2, p: 0.65 },
+  sugarcane: { kcIni: 0.4, kcMid: 1.25, kcEnd: 0.75, devStart: 36, midStart: 126, lateStart: 281, zrMin: 0.3, zrMax: 1.2, p: 0.65 },
+  maize: { kcIni: 0.3, kcMid: 1.2, kcEnd: 0.5, devStart: 21, midStart: 56, lateStart: 91, zrMin: 0.3, zrMax: 1.0, p: 0.55 },
+  // Rice is kept flooded: see the standing-water rule below (Kc only used for "need per day").
+  rice: { kcIni: 1.05, kcMid: 1.2, kcEnd: 0.9, devStart: 31, midStart: 66, lateStart: 96, zrMin: 0.3, zrMax: 0.5, p: 0.2 },
 };
 
-export function cropKc(crop: CropId, stageKey: string): number {
-  return STAGE_KC[crop][stageKey] ?? CROP_CALENDARS[crop].stages.reduce((s, st) => s + (STAGE_KC[crop][st.key] ?? 1), 0) / CROP_CALENDARS[crop].stages.length;
+/** Total available water per metre of root zone (mm/m) by soil type; unknown → loam. */
+export const TAW_MM_PER_M: Record<string, number> = { sandy: 80, loam: 150, silt: 170, clay: 180, unknown: 150 };
+
+/** If nothing is logged and the crop was sown longer ago than this, ask for the last irrigation. */
+export const ASSUME_SOWING_IRRIGATION_DAYS = 20;
+
+const lerp = (a: number, b: number, t: number) => a + (b - a) * Math.min(1, Math.max(0, t));
+
+export function kcOnDay(crop: CropId, day: number): number {
+  const w = CROP_WATER[crop];
+  const season = CROP_CALENDARS[crop].seasonDays;
+  if (day < w.devStart) return w.kcIni;
+  if (day < w.midStart) return lerp(w.kcIni, w.kcMid, (day - w.devStart) / (w.midStart - w.devStart));
+  if (day < w.lateStart) return w.kcMid;
+  return lerp(w.kcMid, w.kcEnd, (day - w.lateStart) / Math.max(1, season - w.lateStart));
+}
+
+export function rootDepthOnDay(crop: CropId, day: number): number {
+  const w = CROP_WATER[crop];
+  return lerp(w.zrMin, w.zrMax, day / w.midStart);
+}
+
+export function rawMm(crop: CropId, day: number, soil: string | null): number {
+  const taw = TAW_MM_PER_M[soil ?? 'unknown'] ?? TAW_MM_PER_M.unknown;
+  return Math.round(CROP_WATER[crop].p * taw * rootDepthOnDay(crop, day));
+}
+
+export type IrrigationAdvice =
+  | { kind: 'rice'; rainMm: number }
+  | { kind: 'log-needed' }
+  | { kind: 'limited' }
+  | { kind: 'skip'; rainMm: number; deficitMm: number; rawMm: number; dailyNeedMm: number }
+  | { kind: 'due' | 'ok'; dueInDays: number; deficitMm: number; rawMm: number; dailyNeedMm: number; beyondForecast?: boolean };
+
+export function irrigationAdvice(input: {
+  forecast: Forecast;
+  today: string;
+  crop: CropId;
+  sowingDate: string;
+  soil: string | null;
+  lastIrrigation: string | null;
+}): IrrigationAdvice {
+  const { forecast: f, today, crop, sowingDate } = input;
+  const d = f.daily;
+  const ti = d.date.indexOf(today);
+  const rainNext3 = ti < 0 ? 0 : d.precipMm.slice(ti + 1, ti + 4).reduce<number>((s, x) => s + (x ?? 0), 0);
+
+  if (crop === 'rice') return { kind: 'rice', rainMm: Math.round(rainNext3) };
+
+  const sownDaysAgo = daysBetween(sowingDate, today);
+  if (sownDaysAgo < 0) return { kind: 'limited' }; // not sown yet
+  if (!input.lastIrrigation && sownDaysAgo > ASSUME_SOWING_IRRIGATION_DAYS) return { kind: 'log-needed' };
+  // Last irrigation (or the pre-sowing irrigation for a newly sown crop) refills the root zone.
+  const start = input.lastIrrigation && input.lastIrrigation > sowingDate ? input.lastIrrigation : sowingDate;
+
+  const si = d.date.indexOf(start);
+  if (ti < 0 || si < 0 || si > ti) return { kind: 'limited' }; // older than the provider's past days
+  let deficit = 0;
+  for (let i = si + 1; i <= ti; i++) {
+    const et0 = d.et0Mm[i];
+    if (et0 === null) return { kind: 'limited' };
+    deficit = Math.max(0, deficit + et0 * kcOnDay(crop, daysBetween(sowingDate, d.date[i])) - effectiveRain(d.precipMm[i]));
+  }
+  deficit = Math.round(deficit * 10) / 10;
+
+  const dayNow = sownDaysAgo;
+  const raw = rawMm(crop, dayNow, input.soil);
+  const et0Today = d.et0Mm[ti];
+  const dailyNeedMm = et0Today === null ? 0 : Math.round(et0Today * kcOnDay(crop, dayNow) * 10) / 10;
+
+  const effNext3 = d.precipMm.slice(ti + 1, ti + 4).reduce<number>((s, x) => s + effectiveRain(x), 0);
+  if (deficit >= raw * 0.6 && effNext3 >= deficit) {
+    return { kind: 'skip', rainMm: Math.round(rainNext3), deficitMm: deficit, rawMm: raw, dailyNeedMm };
+  }
+  if (deficit >= raw) return { kind: 'due', dueInDays: 0, deficitMm: deficit, rawMm: raw, dailyNeedMm };
+
+  // Project forward with the forecast until the deficit reaches RAW.
+  let projected = deficit;
+  for (let i = ti + 1; i < d.date.length; i++) {
+    const et0 = d.et0Mm[i];
+    if (et0 === null) break;
+    const day = daysBetween(sowingDate, d.date[i]);
+    projected = Math.max(0, projected + et0 * kcOnDay(crop, day) - effectiveRain(d.precipMm[i]));
+    if (projected >= rawMm(crop, day, input.soil)) {
+      const dueInDays = i - ti;
+      return { kind: dueInDays <= 2 ? 'due' : 'ok', dueInDays, deficitMm: deficit, rawMm: raw, dailyNeedMm };
+    }
+  }
+  return { kind: 'ok', dueInDays: d.date.length - 1 - ti, deficitMm: deficit, rawMm: raw, dailyNeedMm, beyondForecast: true };
 }

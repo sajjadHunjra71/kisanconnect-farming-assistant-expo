@@ -1,10 +1,12 @@
-import { cropKc } from '../crop-water';
 import {
+  alertDedupeKey,
+  cacheKey,
   conditionFromCode,
   diseaseHints,
   effectiveRain,
   gridCell,
-  irrigationAdvice,
+  inPakistanBox,
+  limitedData,
   localHour,
   nextSprayWindow,
   openMeteoUrl,
@@ -14,168 +16,213 @@ import {
 } from '../weather-rules';
 import { makeForecast } from './weather-fixture';
 
-describe('open-meteo', () => {
-  it('requests the fields we need, in Pakistan time with past days', () => {
+describe('open-meteo request and parsing', () => {
+  it('asks for the audited fields: 14 days ahead, 30 past, Karachi time, km/h', () => {
     const url = openMeteoUrl(31.5, 74.3);
-    expect(url).toContain('latitude=31.5&longitude=74.3');
-    expect(url).toContain('et0_fao_evapotranspiration');
+    for (const f of ['apparent_temperature', 'relative_humidity_2m', 'precipitation_probability', 'wind_gusts_10m', 'visibility', 'weather_code', 'et0_fao_evapotranspiration', 'precipitation_sum']) {
+      expect(url).toContain(f);
+    }
+    expect(url).toContain('forecast_days=14');
+    expect(url).toContain('past_days=30');
     expect(url).toContain('timezone=Asia%2FKarachi');
-    expect(url).toContain('past_days=7');
+    expect(url).toContain('wind_speed_unit=kmh');
   });
 
-  it('parses a response and rejects malformed ones', () => {
-    const body = {
-      latitude: 31.5,
-      longitude: 74.3,
-      utc_offset_seconds: 18000,
-      current: { time: '2026-11-20T10:00', temperature_2m: 21.4, apparent_temperature: 20, relative_humidity_2m: 60, wind_speed_10m: 7, wind_gusts_10m: 15, precipitation: 0, weather_code: 2, is_day: 1 },
-      hourly: {
-        time: ['2026-11-20T00:00', '2026-11-20T01:00'],
-        temperature_2m: [12, null],
-        relative_humidity_2m: [80, 82],
-        precipitation_probability: [0, 5],
-        precipitation: [0, 0],
-        weather_code: [0, 45],
-        wind_speed_10m: [3, 4],
-        wind_gusts_10m: [6, 8],
-      },
-      daily: {
-        time: ['2026-11-20'],
-        temperature_2m_max: [24],
-        temperature_2m_min: [11],
-        precipitation_sum: [0],
-        precipitation_probability_max: [5],
-        et0_fao_evapotranspiration: [2.1],
-        wind_speed_10m_max: [9],
-        weather_code: [2],
-      },
-    };
+  const body = {
+    latitude: 31.5,
+    longitude: 74.3,
+    utc_offset_seconds: 18000,
+    hourly: {
+      time: ['2026-11-20T00:00', '2026-11-20T01:00'],
+      temperature_2m: [12, null],
+      relative_humidity_2m: [80, 82],
+      precipitation_probability: [0, 5],
+      precipitation: [0, 0],
+      weather_code: [0, 45],
+      wind_speed_10m: [3, 4],
+      wind_gusts_10m: [6, 8],
+    },
+    daily: { time: ['2026-11-20'], temperature_2m_max: [24], temperature_2m_min: [11], precipitation_sum: [0], et0_fao_evapotranspiration: [2.1], weather_code: [2] },
+  };
+
+  it('missing values are null, never 0; missing series are all null', () => {
     const f = parseOpenMeteo(body, '2026-11-20T05:00:00Z');
-    expect(f.current).toMatchObject({ tempC: 21.4, isDay: true, code: 2 });
-    expect(f.hourly.tempC).toEqual([12, 0]); // nulls become 0
-    expect(f.daily.et0Mm).toEqual([2.1]);
+    expect(f.provider).toBe('open-meteo');
+    expect(f.hourly.tempC).toEqual([12, null]);
+    expect(f.hourly.visibilityM).toEqual([null, null]); // not sent
+    expect(f.hourly.feelsLikeC).toEqual([null, null]);
+    expect(limitedData(f, '2026-11-20T00:00')).toEqual(expect.arrayContaining(['visibilityM']));
+  });
+
+  it('rejects malformed bodies', () => {
     expect(() => parseOpenMeteo({ ...body, hourly: { ...body.hourly, relative_humidity_2m: [1] } }, '')).toThrow('relative_humidity_2m');
     expect(() => parseOpenMeteo(null, '')).toThrow();
   });
 
-  it('snaps farms to a ~11 km grid cell', () => {
+  it('grid cell, cache key, Pakistan box', () => {
     expect(gridCell(31.5497, 74.3436)).toEqual({ key: '31.5_74.3', lat: 31.5, lng: 74.3 });
-    expect(gridCell(31.46, 74.26).key).toBe('31.5_74.3');
-    expect(gridCell(29.4, 71.68).key).toBe('29.4_71.7');
+    expect(cacheKey('31.5_74.3', 'met-norway')).toBe('31.5_74.3:met-norway:v2');
+    expect(inPakistanBox(31.5, 74.3)).toBe(true);
+    expect(inPakistanBox(37.6, 74)).toBe(false);
+    expect(inPakistanBox(24.86, 59.9)).toBe(false);
   });
 
-  it('maps WMO codes', () => {
-    expect(conditionFromCode(0, 20)).toBe('clear');
+  it('WMO codes and local hour', () => {
     expect(conditionFromCode(0, 41)).toBe('hot');
-    expect(conditionFromCode(2)).toBe('partly-cloudy');
     expect(conditionFromCode(45)).toBe('fog');
-    expect(conditionFromCode(63)).toBe('rain');
     expect(conditionFromCode(81)).toBe('rain');
-    expect(conditionFromCode(96)).toBe('storm');
-  });
-
-  it('local hour uses the forecast offset (PKT = UTC+5)', () => {
+    expect(conditionFromCode(null)).toBe('partly-cloudy');
     expect(localHour({ utcOffsetSeconds: 18000 }, new Date('2026-11-20T05:30:00Z'))).toBe('2026-11-20T10:00');
   });
 });
 
 describe('spray window', () => {
-  it('marks rain ahead, wind, heat and night', () => {
+  const at = (slots: ReturnType<typeof sprayWindow>, t: string) => slots.find((s) => s.time === t);
+
+  it('avoid: rain ahead, wind, gusts, heat, outside 05–19', () => {
     const f = makeForecast({
       hourly: (t) => {
         if (t === '2026-11-20T15:00') return { rainProb: 70 };
-        if (t === '2026-11-21T10:00') return { windKmh: 22 };
+        if (t === '2026-11-21T10:00') return { windKmh: 18 };
+        if (t === '2026-11-21T11:00') return { gustKmh: 30 };
         if (t === '2026-11-21T13:00') return { tempC: 37 };
         return {};
       },
     });
-    const slots = sprayWindow(f, '2026-11-20T08:00', 30);
-    const at = (t: string) => slots.find((s) => s.time === t)?.reason;
-    expect(at('2026-11-20T08:00')).toBe('ok'); // rain is 7 h away
-    expect(at('2026-11-20T09:00')).toBe('rain'); // within 6 h of 15:00
-    expect(at('2026-11-20T15:00')).toBe('rain');
-    expect(at('2026-11-20T16:00')).toBe('ok');
-    expect(at('2026-11-20T22:00')).toBe('dark');
-    expect(at('2026-11-21T10:00')).toBe('wind');
-    expect(at('2026-11-21T13:00')).toBe('heat');
-    expect(nextSprayWindow(slots)).toEqual({ start: '2026-11-20T16:00', end: '2026-11-20T18:00' });
+    const s = sprayWindow(f, '2026-11-20T05:00', 40);
+    expect(at(s, '2026-11-20T05:00')?.status).toBe('good');
+    expect(at(s, '2026-11-20T08:00')?.status).toBe('good'); // rain is 7 h away
+    expect(at(s, '2026-11-20T09:00')).toMatchObject({ status: 'avoid', reason: 'rain' });
+    expect(at(s, '2026-11-20T19:00')?.status).toBe('good');
+    expect(at(s, '2026-11-20T20:00')).toMatchObject({ status: 'avoid', reason: 'dark' });
+    expect(at(s, '2026-11-21T10:00')?.reason).toBe('wind');
+    expect(at(s, '2026-11-21T11:00')?.reason).toBe('gust');
+    expect(at(s, '2026-11-21T13:00')?.reason).toBe('heat');
+    expect(nextSprayWindow(s)).toEqual({ start: '2026-11-20T05:00', end: '2026-11-20T08:00' });
   });
 
-  it('no good window → null', () => {
-    const f = makeForecast({ hourly: () => ({ windKmh: 30 }) });
-    expect(nextSprayWindow(sprayWindow(f, '2026-11-20T06:00', 48))).toBeNull();
+  it('caution: calm air, dry air, unknown rain chance', () => {
+    const f = makeForecast({
+      hourly: (t) => {
+        if (t === '2026-11-20T09:00') return { windKmh: 2 };
+        if (t === '2026-11-20T10:00') return { humidity: 30 };
+        if (t === '2026-11-20T17:00') return { rainProb: null };
+        return {};
+      },
+    });
+    const s = sprayWindow(f, '2026-11-20T09:00', 10);
+    expect(at(s, '2026-11-20T09:00')).toMatchObject({ status: 'caution', reason: 'calm' });
+    expect(at(s, '2026-11-20T10:00')).toMatchObject({ status: 'caution', reason: 'dry-air' });
+    // 17:00 rain chance unknown → every slot whose 6 h look-ahead includes it is caution
+    expect(at(s, '2026-11-20T10:00')?.reason).toBe('dry-air');
+    expect(at(s, '2026-11-20T11:00')).toMatchObject({ status: 'caution', reason: 'rain-unknown' });
+    expect(at(s, '2026-11-20T18:00')?.status).toBe('good');
   });
 });
 
 describe('alerts', () => {
-  it('heat, frost, heavy rain and wind in the next 3 days only', () => {
-    const f = makeForecast({
-      daily: (d) =>
-        d === '2026-11-20' ? { maxC: 41 } : d === '2026-11-21' ? { minC: -1, precipMm: 30 } : d === '2026-11-24' ? { maxC: 46 } : {},
-      hourly: (t) => (t === '2026-11-22T14:00' ? { gustKmh: 62 } : {}),
-    });
-    expect(weatherAlerts(f, '2026-11-20')).toEqual([
-      { id: 'heat:2026-11-20', kind: 'heat', severity: 'warning', date: '2026-11-20', value: 41 },
-      { id: 'frost:2026-11-21', kind: 'frost', severity: 'danger', date: '2026-11-21', value: -1 },
-      { id: 'heavy-rain:2026-11-21', kind: 'heavy-rain', severity: 'warning', date: '2026-11-21', value: 30 },
-      { id: 'strong-wind:2026-11-22', kind: 'strong-wind', severity: 'warning', date: '2026-11-22', value: 62 },
+  const wheatHeading = [{ crop: 'wheat', stage: 'heading', cropId: 'w1' }];
+
+  it('nothing without growing crops', () => {
+    expect(weatherAlerts(makeForecast({ daily: () => ({ precipMm: 80 }) }), '2026-11-20', [])).toEqual([]);
+  });
+
+  it('heatwave needs ≥ 45 °C on 2+ of the next 3 days', () => {
+    const one = makeForecast({ daily: (d) => (d === '2026-11-20' ? { maxC: 46 } : {}) });
+    expect(weatherAlerts(one, '2026-11-20', wheatHeading).map((a) => a.kind)).toEqual([]);
+    const two = makeForecast({ daily: (d) => (d === '2026-11-20' || d === '2026-11-22' ? { maxC: 46 } : {}) });
+    expect(weatherAlerts(two, '2026-11-20', wheatHeading)).toEqual([{ kind: 'heatwave', severity: 'danger', startDate: '2026-11-20', value: 46 }]);
+  });
+
+  it('crop heat stress at sensitive stages', () => {
+    const f = makeForecast({ daily: (d) => (d === '2026-11-21' ? { maxC: 36 } : {}) });
+    expect(weatherAlerts(f, '2026-11-20', [{ crop: 'wheat', stage: 'grain-fill', cropId: 'w' }])).toEqual([
+      { kind: 'heat-stress', severity: 'warning', startDate: '2026-11-21', value: 36, crop: 'wheat', cropId: 'w' },
     ]);
+    expect(weatherAlerts(f, '2026-11-20', [{ crop: 'wheat', stage: 'tillering' }])).toEqual([]);
+    expect(weatherAlerts(f, '2026-11-20', [{ crop: 'rice', stage: 'panicle' }]).map((a) => a.kind)).toEqual(['heat-stress']);
+    expect(weatherAlerts(f, '2026-11-20', [{ crop: 'cotton', stage: 'flowering' }])).toEqual([]); // needs ≥ 42
+  });
+
+  it('frost only for sugarcane, maize, and wheat at heading; ≤ 0 is severe', () => {
+    const f = makeForecast({ daily: (d) => (d === '2026-11-21' ? { minC: 1 } : d === '2026-11-22' ? { minC: -1 } : {}) });
+    expect(weatherAlerts(f, '2026-11-20', wheatHeading)).toEqual([{ kind: 'frost', severity: 'warning', startDate: '2026-11-21', value: 1, crop: 'wheat', cropId: 'w1' }]);
+    expect(weatherAlerts(f, '2026-11-20', [{ crop: 'wheat', stage: 'tillering' }])).toEqual([]);
+    expect(weatherAlerts(f, '2026-11-20', [{ crop: 'cotton', stage: 'squaring' }])).toEqual([]);
+    const severe = makeForecast({ daily: (d) => (d === '2026-11-21' ? { minC: -1 } : {}) });
+    expect(weatherAlerts(severe, '2026-11-20', [{ crop: 'maize', stage: 'growth' }])[0]).toMatchObject({ kind: 'frost', severity: 'danger' });
+  });
+
+  it('heavy rain ≥ 35 mm, gusts ≥ 50 km/h', () => {
+    const f = makeForecast({
+      daily: (d) => (d === '2026-11-20' ? { precipMm: 34 } : d === '2026-11-21' ? { precipMm: 40 } : {}),
+      hourly: (t) => (t === '2026-11-22T14:00' ? { gustKmh: 55 } : {}),
+    });
+    expect(weatherAlerts(f, '2026-11-20', wheatHeading)).toEqual([
+      { kind: 'heavy-rain', severity: 'warning', startDate: '2026-11-21', value: 40 },
+      { kind: 'strong-wind', severity: 'warning', startDate: '2026-11-22', value: 55 },
+    ]);
+  });
+
+  it('fog from visibility (dense < 200 m), else humid calm nights', () => {
+    const vis = makeForecast({ hourly: (t) => (t === '2026-11-21T06:00' ? { visibilityM: 150 } : {}) });
+    expect(weatherAlerts(vis, '2026-11-20', wheatHeading)).toEqual([{ kind: 'fog', severity: 'danger', startDate: '2026-11-21', value: 150 }]);
+    const humid = makeForecast({
+      hourly: (t) => ({ visibilityM: null, ...(t >= '2026-11-20T02:00' && t <= '2026-11-20T05:00' ? { humidity: 98, windKmh: 2 } : {}) }),
+    });
+    expect(weatherAlerts(humid, '2026-11-20', wheatHeading)).toEqual([{ kind: 'fog', severity: 'warning', startDate: '2026-11-20', value: 0 }]);
+  });
+
+  it('dedupe key = kind:farm:crop:start date', () => {
+    expect(alertDedupeKey('frost', 'f1', 'c1', '2026-11-21')).toBe('frost:f1:c1:2026-11-21');
+    expect(alertDedupeKey('fog', 'f1', null, '2026-11-21')).toBe('fog:f1:-:2026-11-21');
   });
 });
 
 describe('disease hints', () => {
-  const coolHumid = makeForecast({ hourly: (t) => (t >= '2026-11-20T18:00' && t < '2026-11-21T12:00' ? { tempC: 11, humidity: 92 } : {}) });
-
-  it('wheat rust when cool + humid for 12+ hours at a susceptible stage', () => {
-    expect(diseaseHints(coolHumid, '2026-11-20T10:00', [{ crop: 'wheat', stage: 'tillering' }])).toEqual([
-      { id: 'wheat-yellow-rust:2026-11-20', ruleId: 'wheat-yellow-rust', crop: 'wheat', hours: 18, from: '2026-11-20T10:00' },
+  it('wheat yellow rust: Dec–Mar, tillering→heading, cool + humid 12 h or rain on 2 days', () => {
+    const humid = (start: string) =>
+      makeForecast({ start, hourly: (t) => (t.slice(11, 13) >= '00' && t.slice(11, 13) < '14' ? { tempC: 12, humidity: 90 } : {}) });
+    const dec = humid('2026-11-25');
+    expect(diseaseHints(dec, '2026-12-10T00:00', [{ crop: 'wheat', stage: 'tillering', cropId: 'w' }])).toEqual([
+      { ruleId: 'wheat-yellow-rust', crop: 'wheat', cropId: 'w', startDate: '2026-12-10', evidence: 42 },
     ]);
+    expect(diseaseHints(dec, '2026-12-10T00:00', [{ crop: 'wheat', stage: 'grain-fill' }])).toEqual([]);
+    const nov = humid('2026-10-21');
+    expect(diseaseHints(nov, '2026-11-20T00:00', [{ crop: 'wheat', stage: 'tillering' }])).toEqual([]); // not the season
+    const rainy = makeForecast({ start: '2026-11-25', hourly: (t) => (t === '2026-12-10T08:00' || t === '2026-12-11T08:00' ? { precipMm: 1 } : {}) });
+    expect(diseaseHints(rainy, '2026-12-10T00:00', [{ crop: 'wheat', stage: 'jointing' }]).map((h) => h.ruleId)).toEqual(['wheat-yellow-rust']);
   });
 
-  it('not at germination, not for other crops, not when dry', () => {
-    expect(diseaseHints(coolHumid, '2026-11-20T10:00', [{ crop: 'wheat', stage: 'germination' }])).toEqual([]);
-    expect(diseaseHints(coolHumid, '2026-11-20T10:00', [{ crop: 'maize', stage: 'growth' }])).toEqual([]);
-    expect(diseaseHints(makeForecast({}), '2026-11-20T10:00', [{ crop: 'wheat', stage: 'tillering' }])).toEqual([]);
+  it('rice blast: 3+ humid nights at 20–28 °C', () => {
+    const nights = (n: number) =>
+      makeForecast({
+        hourly: (t) => {
+          const hr = Number(t.slice(11, 13));
+          const day = Number(t.slice(8, 10));
+          const night = hr >= 20 || hr <= 5;
+          const nightOf = hr >= 20 ? day : day - 1;
+          return night && nightOf >= 20 && nightOf < 20 + n ? { tempC: 24, humidity: 95 } : {};
+        },
+      });
+    expect(diseaseHints(nights(3), '2026-11-20T10:00', [{ crop: 'rice', stage: 'panicle' }]).map((h) => h.ruleId)).toEqual(['rice-blast']);
+    expect(diseaseHints(nights(2), '2026-11-20T10:00', [{ crop: 'rice', stage: 'panicle' }])).toEqual([]);
+    expect(diseaseHints(nights(3), '2026-11-20T10:00', [{ crop: 'rice', stage: 'maturity' }])).toEqual([]);
   });
-});
 
-describe('irrigation advice', () => {
-  const base = { today: '2026-11-20', kc: 1, rawMm: 30 };
-
-  it('unknown without a last irrigation date', () => {
-    expect(irrigationAdvice({ ...base, forecast: makeForecast({}), lastIrrigation: null })).toEqual({ kind: 'unknown', dailyNeedMm: 3 });
-  });
-
-  it('counts down from the last irrigation (3 mm/day, 30 mm RAW)', () => {
-    // irrigated 6 days ago → 18 mm used → 12 mm left → due in 4 days
-    expect(irrigationAdvice({ ...base, forecast: makeForecast({}), lastIrrigation: '2026-11-14' })).toEqual({
-      kind: 'ok',
-      dailyNeedMm: 3,
-      dueInDays: 4,
-      depletionMm: 18,
+  it('cotton boll rot: rain, then 12 h humid at 25–35 °C, after flowering', () => {
+    const f = makeForecast({
+      hourly: (t) => (t === '2026-11-20T12:00' ? { precipMm: 4 } : t > '2026-11-20T12:00' && t <= '2026-11-21T02:00' ? { tempC: 28, humidity: 90 } : {}),
     });
-    // irrigated 9 days ago → 27 mm → due tomorrow
-    expect(irrigationAdvice({ ...base, forecast: makeForecast({}), lastIrrigation: '2026-11-11' })).toMatchObject({ kind: 'due', dueInDays: 1 });
+    expect(diseaseHints(f, '2026-11-20T10:00', [{ crop: 'cotton', stage: 'boll-opening' }]).map((h) => h.ruleId)).toEqual(['cotton-boll-rot']);
+    expect(diseaseHints(f, '2026-11-20T10:00', [{ crop: 'cotton', stage: 'squaring' }])).toEqual([]);
+    const noRain = makeForecast({ hourly: () => ({ tempC: 28, humidity: 90 }) });
+    expect(diseaseHints(noRain, '2026-11-20T10:00', [{ crop: 'cotton', stage: 'boll-opening' }])).toEqual([]);
   });
 
-  it('skip when enough rain is coming', () => {
-    const f = makeForecast({ daily: (d) => (d === '2026-11-21' ? { precipMm: 30 } : {}) });
-    expect(irrigationAdvice({ ...base, forecast: f, lastIrrigation: '2026-11-13' })).toEqual({ kind: 'skip', dailyNeedMm: 3, rainMm: 30, depletionMm: 21 });
-  });
-
-  it('rain since the last irrigation refills the bucket', () => {
-    const f = makeForecast({ daily: (d) => (d === '2026-11-18' ? { precipMm: 40 } : {}) });
-    expect(irrigationAdvice({ ...base, forecast: f, lastIrrigation: '2026-11-14' })).toMatchObject({ depletionMm: 6 });
-  });
-
-  it('effective rain ignores small showers', () => {
-    expect(effectiveRain(3)).toBe(0);
+  it('effective rain ignores days under 5 mm', () => {
+    expect(effectiveRain(4.9)).toBe(0);
     expect(effectiveRain(10)).toBe(8);
-  });
-
-  it('Kc by crop stage', () => {
-    expect(cropKc('wheat', 'heading')).toBe(1.15);
-    expect(cropKc('cotton', 'emergence')).toBe(0.35);
-    expect(cropKc('wheat', 'unknown-stage')).toBeCloseTo((0.4 + 0.75 + 1.1 + 1.15 + 0.9 + 0.4) / 6);
+    expect(effectiveRain(null)).toBe(0);
   });
 });

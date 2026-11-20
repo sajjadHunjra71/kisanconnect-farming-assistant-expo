@@ -14,17 +14,22 @@ Free tier only. Nothing here contains keys.
 4. **Authentication → URL Configuration → Redirect URLs**: add
    - `kisanconnect://**` (dev and production builds)
    - `exp://**` (Expo Go during development)
-5. Deploy the Edge Functions with the Supabase CLI (no global install needed: `npx supabase …`):
+5. Deploy the Edge Functions with the Supabase CLI (no global install and no Docker needed):
    ```
    npx supabase login
    npx supabase link --project-ref <PROJECT_REF>
-   npx supabase functions deploy delete-account
-   npx supabase functions deploy weather-proxy
-   npx supabase functions deploy weather-alerts --no-verify-jwt
-   npx supabase secrets set CRON_SECRET=<a long random string>
+   npx supabase functions deploy delete-account --use-api
+   npx supabase functions deploy weather-proxy --use-api
+   npx supabase functions deploy weather-alerts --use-api
    ```
-6. Weather alerts every 3 hours: open `setup/schedule_weather_alerts.sql`, put in your project ref and the same CRON_SECRET, and run it once in the SQL Editor.
+   `config.toml` turns off the gateway JWT check for all three; each function checks the caller itself
+   (`delete-account` and `weather-proxy` with `auth.getUser()`, `weather-alerts` with the cron secret).
+6. Weather alerts schedule: open `setup/schedule_weather_alerts.sql`, replace `<PROJECT_REF>`, and run it once in the SQL Editor.
+   It creates a random cron secret inside Supabase Vault (`gen_random_bytes`), schedules `weather-alerts` every 3 hours
+   (the secret goes in the `x-cron-secret` header and is checked by the `check_cron_secret` database function),
+   and a daily clean-up of old forecasts, rate-limit rows, push tickets and alerts.
+7. Optional checks: run `tests/rls_farms.sql` and `tests/rls_weather.sql` in the SQL Editor. Each ends in `rollback`, so nothing is kept.
 
-`functions/_shared/` holds copies of the app's pure engine files (`npm run sync-shared` regenerates them; a test fails if they're stale).
+`functions/_shared/engine/` is a generated copy of the app's `src/engine` (`npm run sync-engine`; a unit test fails if it's stale).
 
 The service-role key is never put in the app or in `.env`. Edge Functions get it automatically.

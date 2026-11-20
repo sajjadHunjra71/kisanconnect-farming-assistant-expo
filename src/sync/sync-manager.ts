@@ -9,12 +9,19 @@ import { AppState } from 'react-native';
 import { closeRepos, deleteUserDatabase, openRepos } from '@/db';
 import { onLocalWrite } from '@/db/events';
 import { supabase } from '@/lib/supabase';
+import { clearForecasts } from '@/features/weather/weather-service';
 import { useDataVersion } from '@/store/data-version';
 import { useSyncStore } from '@/store/sync-store';
 
+import { showLocalAlerts } from '@/features/notifications/local-alerts';
+import { useAuthStore } from '@/store/auth-store';
+import type { AlertsLocal } from '@/db/alerts-local';
+
+import { syncAlerts } from './alerts-sync';
 import { classifyError } from './errors';
 import { pull, push } from './engine';
 import { createSyncLocal, type SyncLocal } from './local';
+import { createSupabaseAlertsTransport } from './supabase-alerts';
 import { createSupabaseTransport } from './supabase-transport';
 import type { SyncTransport } from './transport';
 
@@ -25,7 +32,7 @@ const PUSH_DEBOUNCE_MS = 1500;
 const RETRY_MIN_MS = 2000;
 const RETRY_MAX_MS = 5 * 60_000;
 
-let active: { userId: string; local: SyncLocal; transport: SyncTransport; unsubs: (() => void)[] } | null = null;
+let active: { userId: string; local: SyncLocal; transport: SyncTransport; alerts: AlertsLocal; unsubs: (() => void)[] } | null = null;
 let running: Promise<void> | null = null;
 let queued: Mode | null = null;
 let online = true;
@@ -85,7 +92,12 @@ async function runOnce(mode: Mode) {
       if (pr.stopped === 'retry') scheduleRetry();
       return;
     }
-    if (mode === 'full') await pull(deps);
+    if (mode === 'full') {
+      await pull(deps);
+      if (a !== active) return;
+      await syncAlerts(createSupabaseAlertsTransport(supabase!), a.alerts);
+      await showLocalAlerts(a.alerts, useAuthStore.getState().profile?.notification_prefs).catch(() => 0);
+    }
     if (a !== active) return;
     lastStop = null;
     backoffMs = 0;
@@ -152,7 +164,7 @@ export async function startSync(userId: string): Promise<void> {
       else void refreshStats().catch(() => undefined);
     }),
   ];
-  active = { userId, local: createSyncLocal(repos.store, userId), transport: createSupabaseTransport(supabase), unsubs };
+  active = { userId, local: createSyncLocal(repos.store, userId), transport: createSupabaseTransport(supabase), alerts: repos.alertsLocal, unsubs };
   if (store().sessionLoss?.userId === userId) store().set({ sessionLoss: null });
   await refreshStats();
   void requestSync('full');
@@ -199,6 +211,7 @@ export async function finishUserSignOut(userId: string): Promise<void> {
   try {
     await stopSync();
     await deleteUserDatabase(userId);
+    await clearForecasts(userId);
     if (store().sessionLoss?.userId === userId) store().set({ sessionLoss: null });
   } finally {
     userSignOut = false;

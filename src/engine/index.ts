@@ -5,3 +5,5 @@ export * from './units';
 export * from './districts';
 export * from './crop-water';
 export * from './weather-rules';
+export * from './met-norway';
+export * from './alert-prefs';

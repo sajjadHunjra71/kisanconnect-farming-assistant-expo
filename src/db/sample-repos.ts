@@ -2,6 +2,7 @@
 import { addDays, todayLocal } from '@/engine';
 import { sampleFarm } from '@/mocks/sample-data';
 
+import { createMemoryAlerts, type AlertRecord } from './alerts-local';
 import { createMemoryStore } from './memory-store';
 import { createRepos } from './repo-core';
 import type { Row } from './store';
@@ -51,7 +52,18 @@ function seed(): Partial<Record<'farms' | 'crops', Row[]>> {
   };
 }
 
+/** Two sample inbox alerts so the bell and inbox can be seen in demo mode. */
+function sampleAlerts(): AlertRecord[] {
+  const today = todayLocal();
+  const ts = new Date().toISOString();
+  const base = { farm_id: FARM_ID, created_at: ts, updated_at: ts, pushed_at: null, read_dirty: false, notified_at: null };
+  return [
+    { ...base, id: '00000000-0000-4000-8000-0000000000a1', crop_id: null, kind: 'fog', severity: 'warning', title: 'Fog expected', body: 'Low visibility on the roads. Wait with spraying until it clears.', start_date: addDays(today, 1), read_at: null },
+    { ...base, id: '00000000-0000-4000-8000-0000000000a2', crop_id: '00000000-0000-4000-8000-0000000000c1', kind: 'wheat-yellow-rust', severity: 'warning', title: 'Yellow rust weather for wheat', body: 'Cool, humid or rainy days ahead. Check lower leaves for yellow stripes.', start_date: today, read_at: ts },
+  ];
+}
+
 export function createSampleRepos(): Repos {
   const store = createMemoryStore(seed());
-  return { kind: 'sample', ...createRepos(store, { userId: DEMO_USER_ID, newId: demoId, emitWrites: true }) };
+  return { kind: 'sample', alertsLocal: createMemoryAlerts(sampleAlerts()), ...createRepos(store, { userId: DEMO_USER_ID, newId: demoId, emitWrites: true }) };
 }

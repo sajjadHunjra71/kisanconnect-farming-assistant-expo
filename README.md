@@ -43,14 +43,14 @@ Google sign-in uses Supabase's browser flow (`expo-web-browser`), so login works
 
 ## Weather intelligence
 
-- **Forecast:** Open-Meteo (free, no key) through the `weather-proxy` Edge Function. Farms are snapped to a ~11 km grid cell (0.1°); one cached forecast per cell per hour is shared by everyone in it, and only the cell centre is sent to Open-Meteo. The phone keeps the last forecast so it still shows offline, with its age.
-- **Rules** (`src/engine/weather-rules.ts`, plain TypeScript, unit-tested, shared with the Edge Functions):
-  - Spray window: avoid when rain chance > 40% within 6 h, wind > 15 km/h or temperature > 35 °C; daylight hours only.
-  - Irrigation: FAO-56 water balance. ET₀ × Kc (crop + stage) minus effective rain, counted from the last logged irrigation (or sowing). "Irrigate tomorrow", "next in ~5 days" or "skip, 20 mm rain coming".
-  - Alerts: heatwave (≥ 40 °C), frost (≤ 2 °C), heavy rain (≥ 25 mm/day), strong wind (gusts ≥ 50 km/h) in the next 3 days.
-  - Disease weather: wheat yellow rust, rice blast, cotton boll rot when temperature/humidity match for long enough at a susceptible stage.
-  - All thresholds are indicative guides, not official advice.
-- **Push alerts:** `weather-alerts` runs every 3 hours (pg_cron), checks every farm whose owner allowed alerts, and sends each new alert once (Expo push).
+- **Forecast:** Open-Meteo (14 days ahead, 30 days back), with MET Norway as a fallback, through the `weather-proxy` Edge Function. Farms are snapped to a ~11 km grid cell; one cached forecast per cell, provider and schema version is shared for an hour, and only the cell centre is sent to the provider. Each user can trigger a limited number of fresh fetches per hour. The phone keeps the last forecast per user and farm so it still shows offline; after 24 h it says "Old forecast" and hides advice. Days 8–14 are shown as "Outlook (less certain)". Screens credit "Weather data by Open-Meteo.com" / "MET Norway" (CC BY 4.0).
+- **Rules** (`src/engine`, plain TypeScript, unit-tested, copied into the Edge Functions):
+  - Spray (05:00–19:00): avoid if rain chance > 40% within 6 h, wind > 15 km/h, gusts > 25 km/h or > 35 °C; take care if wind < 3 km/h, humidity < 40% or the rain chance is unknown.
+  - Irrigation (FAO-56): Kc by growth period, root depth by stage, soil water from the farm's soil type, RAW = p × TAW × Zr, effective rain = 80% of days ≥ 5 mm, counted from the last logged irrigation. If nothing is logged on an older crop the app asks for it instead of guessing. Rice: keep standing water.
+  - Alerts: heatwave (≥ 45 °C on 2+ days), crop heat stress at sensitive stages, frost for sugarcane/maize/heading wheat, heavy rain (≥ 35 mm/day), gusts ≥ 50 km/h, fog (visibility, or humid calm nights when visibility is missing).
+  - Disease weather (by stage and season): wheat yellow rust, rice blast, cotton boll rot; cards link to Scan. No weather rule for cotton leaf curl (it's spread by whitefly).
+  - Missing provider values are treated as "limited data", never as 0. All thresholds are indicative guides.
+- **Alerts:** `weather-alerts` runs every 3 hours (pg_cron + Vault secret), stores each alert once in `alerts` (inbox, bell on Home), pushes it via Expo respecting the user's alert types and quiet hours, checks receipts and drops dead tokens. Phones without push (simulator, Expo Go on Android) get a local notification when the alert syncs in.
 
 ## Offline sync
 

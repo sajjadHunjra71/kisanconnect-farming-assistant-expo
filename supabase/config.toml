@@ -1,0 +1,14 @@
+# Supabase CLI settings used when deploying Edge Functions.
+# All three functions check the caller themselves:
+#   delete-account, weather-proxy → supabase.auth.getUser() on the caller's token
+#   weather-alerts → x-cron-secret header checked with the check_cron_secret() RPC
+project_id = "kisanconnect"
+
+[functions.delete-account]
+verify_jwt = false
+
+[functions.weather-proxy]
+verify_jwt = false
+
+[functions.weather-alerts]
+verify_jwt = false

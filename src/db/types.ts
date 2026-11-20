@@ -1,5 +1,6 @@
 import type { AreaUnit, CropId, QuantityUnit } from '@/engine';
 
+import type { AlertsLocal } from './alerts-local';
 import type { Store } from './store';
 
 export const SYNC_TABLES = ['farms', 'crops', 'activities'] as const;
@@ -94,6 +95,8 @@ export type Repos = {
   kind: 'sqlite' | 'sample';
   /** Set for the signed-in user's SQLite database (used by sync). */
   store?: Store;
+  /** Weather alerts inbox on this phone. */
+  alertsLocal: AlertsLocal;
   userId?: string;
   farmsRepo: FarmsRepo;
   cropsRepo: CropsRepo;

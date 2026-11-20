@@ -29,7 +29,7 @@ export default function HomeScreen() {
       const farm = farms.find((f) => f.id === selectedFarmId) ?? farms[0] ?? null;
       const crops = farm ? (await repos.cropsRepo.list({ farmId: farm.id })).filter((c) => c.status === 'active') : [];
       crops.sort((a, b) => a.sowing_date.localeCompare(b.sowing_date));
-      return { farm, crops };
+      return { farm, crops, unread: await repos.alertsLocal.unreadCount() };
     },
     [selectedFarmId],
   );
@@ -37,7 +37,7 @@ export default function HomeScreen() {
 
   return (
     <Screen withTabBar>
-      <GreetingHeader name={displayName ?? sampleUser.name} location={location} />
+      <GreetingHeader name={displayName ?? sampleUser.name} location={location} unread={data?.unread ?? 0} />
       <SampleDataNotice />
       {weather.view ? <WeatherHero weather={weather.view.now} offline={weather.result?.offline} onPress={() => router.push('/(tabs)/weather')} /> : null}
       <QuickActions />

@@ -54,7 +54,9 @@ export type WeatherNow = {
 export type HourlyForecast = { hour: string; tempC: number; condition: WeatherCondition; rainChance: number };
 export type DailyForecast = { day: Localized; minC: number; maxC: number; condition: WeatherCondition; rainMm: number };
 
-export type AdvisoryKind = 'spray' | 'irrigation' | 'disease-risk' | 'heat' | 'frost' | 'rain' | 'wind';
+export type AdvisoryKind = 'spray' | 'irrigation' | 'disease-risk' | 'heat' | 'frost' | 'rain' | 'wind' | 'fog';
+
+export type AdvisoryAction = { kind: 'scan' } | { kind: 'log-irrigation'; farmId: string; cropId: string };
 export type Severity = 'good' | 'info' | 'warning' | 'danger';
 
 export type Advisory = {
@@ -64,6 +66,7 @@ export type Advisory = {
   title: Localized;
   body: Localized;
   source: string;
+  action?: AdvisoryAction;
 };
 
 export type FarmTask = {

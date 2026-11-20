@@ -8,6 +8,7 @@ import { Button, Card, Chip, Divider, FormError, ListRow, Screen, ScreenHeader, 
 import { ValidationError, type FarmInput, type LocationSource, type SoilType, SOIL_TYPES } from '@/db';
 import { AREA_UNITS, PUNJAB_DISTRICTS, matchDistrict, searchDistricts, type AreaUnit, type District } from '@/engine';
 import { useRepos } from '@/features/farm/hooks';
+import { askForAlerts } from '@/features/notifications/ask-for-alerts';
 import { useDirection } from '@/hooks/use-direction';
 import { useAuthStore } from '@/store/auth-store';
 import { useSettingsStore } from '@/store/settings-store';
@@ -114,8 +115,11 @@ export default function FarmEditScreen() {
     setFormError(null);
     setSaving(true);
     try {
+      const firstFarm = !id && (await repos.farmsRepo.list()).length === 0;
       const farm = id ? await repos.farmsRepo.update(id, input) : await repos.farmsRepo.create(input);
       setSelectedFarmId(farm.id);
+      // After the first farm: explain weather alerts, then ask for notification permission.
+      if (firstFarm && repos.kind === 'sqlite') await askForAlerts(t);
       router.back();
     } catch (e) {
       if (e instanceof ValidationError) {

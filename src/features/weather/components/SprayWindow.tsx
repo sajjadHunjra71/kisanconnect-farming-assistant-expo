@@ -5,9 +5,9 @@ import { Card, Icon, Text } from '@/components/ui';
 import { useDirection } from '@/hooks/use-direction';
 import { useTheme } from '@/theme';
 
-type Slot = { label: string; ok: boolean };
+type Slot = { label: string; status: 'good' | 'caution' | 'avoid' };
 
-/** 24h timeline of good/avoid spray slots derived from rain + wind rules. */
+/** Next daylight hours: good / care / avoid spray slots from the spray rules. */
 export function SprayWindow({ slots }: { slots: Slot[] }) {
   const { colors, spacing } = useTheme();
   const { row } = useDirection();
@@ -22,7 +22,7 @@ export function SprayWindow({ slots }: { slots: Slot[] }) {
       <View style={{ flexDirection: row, gap: 4 }}>
         {slots.map((s, i) => (
           <View key={i} style={{ flex: 1, gap: 6 }}>
-            <View style={{ height: 28, borderRadius: 8, backgroundColor: s.ok ? colors.success : colors.dangerSoft }} />
+            <View style={{ height: 28, borderRadius: 8, backgroundColor: s.status === 'good' ? colors.success : s.status === 'caution' ? colors.warningSoft : colors.dangerSoft }} />
             <Text variant="caption" latin color="inkSubtle" align="center">
               {s.label}
             </Text>
@@ -31,6 +31,7 @@ export function SprayWindow({ slots }: { slots: Slot[] }) {
       </View>
       <View style={{ flexDirection: row, gap: spacing.lg }}>
         <Legend color={colors.success} label={t('weather.sprayGood')} />
+        <Legend color={colors.warningSoft} label={t('weather.sprayCaution')} />
         <Legend color={colors.dangerSoft} label={t('weather.sprayAvoid')} />
       </View>
     </Card>
