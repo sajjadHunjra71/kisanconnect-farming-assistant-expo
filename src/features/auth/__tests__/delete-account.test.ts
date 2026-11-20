@@ -8,6 +8,8 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 );
 jest.mock('@react-native-community/netinfo', () => ({ addEventListener: () => () => undefined, fetch: async () => ({ isConnected: true }) }));
 
+jest.mock('@/features/notifications/push', () => ({ unregisterWeatherPush: async () => undefined, registerForWeatherPush: async () => 'unsupported' }));
+
 const mockUser = '11111111-1111-4111-8111-111111111111';
 
 const mockDeleteUserDatabase = jest.fn(async (_userId: string) => undefined);

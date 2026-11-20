@@ -17,6 +17,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { BrandSplash } from '@/components/brand/BrandSplash';
+import { usePushAlerts } from '@/features/notifications/use-push-alerts';
 import { useLanguageSync } from '@/i18n/use-language-sync';
 import { useAuthStore } from '@/store/auth-store';
 import { useSettingsStore } from '@/store/settings-store';
@@ -27,6 +28,7 @@ void SplashScreen.preventAutoHideAsync();
 function RootStack() {
   const { colors, scheme } = useTheme();
   useLanguageSync();
+  usePushAlerts();
   useEffect(() => useAuthStore.getState().init(), []);
   return (
     <>

@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
 import { AuthServiceError, requireSupabase, type AuthErrorCode } from '@/lib/supabase';
+import { unregisterWeatherPush } from '@/features/notifications/push';
 import { beginUserSignOut, cancelUserSignOut, finishUserSignOut } from '@/sync/sync-manager';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -95,6 +96,8 @@ export async function exchangeCode(code: string) {
 export async function signOut() {
   const supabase = requireSupabase();
   const userId = (await supabase.auth.getSession()).data.session?.user.id;
+  // Stop weather alerts to this phone for this account (needs the session, so before signing out).
+  await unregisterWeatherPush();
   beginUserSignOut();
   const { error } = await supabase.auth.signOut();
   if (error) {

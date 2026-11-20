@@ -50,6 +50,12 @@
         {
           "locationWhenInUsePermission": "KisanConnect uses your location to set your farm on the map and show local weather and advice."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#1F5C3F"
+        }
       ]
     ],
     "experiments": {
