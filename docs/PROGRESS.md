@@ -71,5 +71,13 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - README: "Offline sync" section. Hand-over test script: `docs/TESTING-PHASE2.md`.
 - New dependency: expo-file-system (for writing the export file).
 
+## Phase 3: Weather intelligence + push alerts (code done, 20 Nov 2026; needs deploy + device test)
+- 3A `src/engine/weather-rules.ts`: Open-Meteo URL/parser (with 7 past days for the water balance), ~11 km grid cell, WMO codes, spray window (rain > 40% within 6 h / wind > 15 km/h / > 35 °C / night), alerts (heat, frost, heavy rain, strong wind; next 3 days, stable ids), disease-weather hints (wheat yellow rust, rice blast, cotton boll rot by stage), FAO-56 irrigation advice (`crop-water.ts`: Kc per stage, readily available water per crop). Import-free so the same file runs in Deno; `npm run sync-shared` copies engine files to `supabase/functions/_shared/` and a test checks the copies.
+- 3B `weather-proxy` Edge Function (signed-in users; 1 h cache per grid cell in `weather_cache`, serves up to 24 h old if Open-Meteo is down). App service keeps the last forecast on the phone (AsyncStorage, per cell) and shows it offline with its age. Demo mode / web: a generated sample forecast.
+- 3C Weather tab and Home use the selected farm's forecast: now card, day slider, spray strip, 7 days, ET₀, and advice cards (spray window, alerts, disease weather, irrigation per active crop from the activity log). Pull to refresh. Farm without a location → "Set farm location".
+- 3D Push: `push_tokens` (+ `register_push_token` / `unregister_push_token`, a token moves when the phone switches account), `alerts_sent` (never send the same alert twice), `weather-alerts` Edge Function (every 3 h via pg_cron, one notification per farm per run, removes dead tokens). App registers when signed in and Settings → Weather alerts is on; sign-out unregisters; tapping an alert opens the Weather tab.
+- Checks: 85 unit tests; push SQL tested on local Postgres; Edge Functions type-checked with a Deno stub (no Deno/Supabase CLI on this Mac, so not deployed or run yet).
+- Needs from you: deploy (supabase/README.md steps 2, 5, 6) and `eas init` for push tokens. See docs/TESTING-PHASE3.md.
+
 ## Next
-- Run docs/TESTING-PHASE2.md against the real Supabase project, then Phase 3.
+- Run docs/TESTING-PHASE2.md and docs/TESTING-PHASE3.md on the real Supabase project, then Phase 4.

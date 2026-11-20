@@ -32,14 +32,25 @@ Google sign-in uses Supabase's browser flow (`expo-web-browser`), so login works
 |---|---|---|
 | 0 | Foundation, design system, full UI | ✅ Done |
 | 1 | Auth (Google + email via Supabase), profile | ✅ Code done, needs Supabase keys |
-| 2 | Farm & crop management, offline sync | Planned |
-| 3 | Weather intelligence + push alerts | Planned |
+| 2 | Farm & crop management, offline sync | ✅ Code done, test with docs/TESTING-PHASE2.md |
+| 3 | Weather intelligence + push alerts | ✅ Code done, test with docs/TESTING-PHASE3.md |
 | 4 | Crop disease detection (on-device + AI second opinion) | Planned |
 | 5 | AI assistant + voice | Planned |
 | 6 | Irrigation & reminders | Planned |
 | 7 | Mandi prices | Planned |
 | 8 | Expert connection | Planned |
 | 9 | Hardening & release | Planned |
+
+## Weather intelligence
+
+- **Forecast:** Open-Meteo (free, no key) through the `weather-proxy` Edge Function. Farms are snapped to a ~11 km grid cell (0.1°); one cached forecast per cell per hour is shared by everyone in it, and only the cell centre is sent to Open-Meteo. The phone keeps the last forecast so it still shows offline, with its age.
+- **Rules** (`src/engine/weather-rules.ts`, plain TypeScript, unit-tested, shared with the Edge Functions):
+  - Spray window: avoid when rain chance > 40% within 6 h, wind > 15 km/h or temperature > 35 °C; daylight hours only.
+  - Irrigation: FAO-56 water balance. ET₀ × Kc (crop + stage) minus effective rain, counted from the last logged irrigation (or sowing). "Irrigate tomorrow", "next in ~5 days" or "skip, 20 mm rain coming".
+  - Alerts: heatwave (≥ 40 °C), frost (≤ 2 °C), heavy rain (≥ 25 mm/day), strong wind (gusts ≥ 50 km/h) in the next 3 days.
+  - Disease weather: wheat yellow rust, rice blast, cotton boll rot when temperature/humidity match for long enough at a susceptible stage.
+  - All thresholds are indicative guides, not official advice.
+- **Push alerts:** `weather-alerts` runs every 3 hours (pg_cron), checks every farm whose owner allowed alerts, and sends each new alert once (Expo push).
 
 ## Offline sync
 
