@@ -15,6 +15,7 @@ const kindIcon: Record<AdvisoryKind, IconName> = {
   heat: 'thermometer-high',
   frost: 'snowflake',
   rain: 'weather-pouring',
+  wind: 'weather-windy',
 };
 
 export function AdvisoryCard({ advisory }: { advisory: Advisory }) {
