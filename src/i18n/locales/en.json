@@ -329,7 +329,12 @@
     "deleteTitle": "Delete your account?",
     "deleteBody": "Your profile and farm data will be permanently deleted. This can't be undone.",
     "deleteConfirm": "Delete permanently",
-    "signOutConfirm": "Sign out of KisanConnect?"
+    "signOutConfirm": "Sign out of KisanConnect?",
+    "exportData": "Export my data",
+    "exportDataBody": "Farms, crops and activity log as a JSON file",
+    "exportTitle": "KisanConnect data",
+    "exportFailed": "Couldn't export your data. Please try again.",
+    "exportUnavailable": "Sharing isn't available on this device."
   },
   "sync": {
     "title": "Sync",

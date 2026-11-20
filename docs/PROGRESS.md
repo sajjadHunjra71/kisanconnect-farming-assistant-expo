@@ -47,7 +47,7 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 
 ## Phase 2C: Farms (code done, 20 Nov 2026)
 - Farm tab reads real farms (`useRepoQuery` re-queries after local writes and every sync run). Several farms → chip switcher; the chosen farm is remembered. No farms → "Add your first farm". Demo mode still shows the sample farm.
-- Add / edit farm (`/farm/edit?id=`): name, area + acre/kanal/hectare (default from the profile's `units`), location by GPS (permission → balanced fix → reverse geocode → matched to one of 36 Punjab districts by name/alias, else nearest centre within 60 km; lat/lng rounded to 2 dp) or a searchable district list (district centre). Permission denied / no fix / outside Punjab → the list opens with a short message. Soil chips, notes, inline errors. Delete asks first and removes crops and activity log too.
+- Add / edit farm (`/farm/edit?id=`): name, area + acre/kanal/hectare (default from the profile's `units`), location by GPS (permission → balanced fix → reverse geocode → matched to one of 41 Punjab districts by name/alias, else nearest centre within 60 km; lat/lng rounded to 2 dp) or a searchable district list (district centre). Permission denied / no fix / outside Punjab → the list opens with a short message. Soil chips, notes, inline errors. Delete asks first and removes crops and activity log too.
 - Onboarding farm setup now asks farm name + area and saves a real farm (and crop, from "sown about…") for signed-in users; demo mode skips saving.
 - Session-loss banner also on Welcome. "Updated from another device" tag on the farm card.
 
@@ -63,5 +63,13 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - Activity timeline per farm (`/activity?farmId=`, from Farm → Activity log): filter by crop / whole farm and by type, tap to edit or delete.
 - Farm summary card: last irrigation and sprays this season per active crop, total cost since the earliest active sowing date. Whole-farm activities count for every active crop (`summarizeFarm`, unit-tested).
 
+## Phase 2F: Data export, docs and test handover (code done, 20 Nov 2026)
+- Settings → **Export my data**: JSON `{ exportedAt, profile, farms, crops, activities }` with live rows only (no soft-deleted rows, no sync fields), saved to the cache folder and shared with expo-sharing (web: file download). Demo mode exports the sample data. Builder is unit-tested.
+- Delete account always wipes the user's local database file, even if the local sign-out step fails (unit-tested with mocks).
+- District list updated to all 41 current Punjab districts (Murree, Talagang, Kot Addu, Wazirabad, Taunsa added).
+- Tests check that en.json and ur.json have the same keys, no empty strings, and that every literal `t('…')` key used in `src/` exists.
+- README: "Offline sync" section. Hand-over test script: `docs/TESTING-PHASE2.md`.
+- New dependency: expo-file-system (for writing the export file).
+
 ## Next
-- Phase 2F.
+- Run docs/TESTING-PHASE2.md against the real Supabase project, then Phase 3.

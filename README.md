@@ -41,6 +41,17 @@ Google sign-in uses Supabase's browser flow (`expo-web-browser`), so login works
 | 8 | Expert connection | Planned |
 | 9 | Hardening & release | Planned |
 
+## Offline sync
+
+Farm data (farms, crops, activity log) works fully offline and syncs with Supabase when there is internet.
+
+- **Per-user database.** Each signed-in user gets their own SQLite file on the phone (`kisan-<userId>.db`). Signing out or deleting the account deletes that file; if the session simply expires, the file is kept and the app asks the user to sign in again to upload what's waiting. Demo mode and web use in-memory sample data.
+- **Outbox.** Every save writes the row and an outbox entry in one transaction, so nothing is lost if the app closes. Edits to the same row before it's uploaded are merged into one entry; a row created and deleted before upload never reaches the server.
+- **Compare-and-set versions.** Every server row has a `version` that the database bumps on each write. The app updates with `where version = <the version I started from>`. If someone else changed the row first, 0 rows change, the server copy wins locally and the row is marked "Updated from another device". A `last_op_id` on each row lets the app recognise its own write when a response was lost.
+- **Delete wins.** Rows are soft-deleted (`deleted_at`). A deleted row can't be brought back, and deleting a farm or crop deletes its children on the server too.
+- **Pull.** Changes are downloaded per table by `(updated_at, id)` pages with a 2-minute overlap; a cursor older than 90 days triggers a full re-download.
+- Code: `src/db` (local storage, outbox), `src/sync` (engine, Supabase transport, triggers), `supabase/migrations/20261121000000_farms_crops_activities.sql` (tables, triggers, RLS), `supabase/tests/rls_farms.sql` (RLS checks).
+
 ## Project structure
 ```
 src/

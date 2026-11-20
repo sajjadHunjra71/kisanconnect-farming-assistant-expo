@@ -1,5 +1,5 @@
 /**
- * The 36 districts of Punjab (pre-2022 list) with an approximate centre point
+ * The 41 districts of Punjab (incl. Murree, Talagang, Kot Addu, Wazirabad and Taunsa, created 2022–23) with an approximate centre point
  * (district headquarters, 2 dp). Aliases cover common spellings from geocoders.
  */
 export type District = { key: string; en: string; ur: string; lat: number; lng: number; aliases?: string[] };
@@ -21,12 +21,14 @@ export const PUNJAB_DISTRICTS: District[] = [
   { key: 'kasur', en: 'Kasur', ur: 'قصور', lat: 31.12, lng: 74.45, aliases: ['Qasur'] },
   { key: 'khanewal', en: 'Khanewal', ur: 'خانیوال', lat: 30.3, lng: 71.93 },
   { key: 'khushab', en: 'Khushab', ur: 'خوشاب', lat: 32.3, lng: 72.35 },
+  { key: 'kot-addu', en: 'Kot Addu', ur: 'کوٹ ادو', lat: 30.47, lng: 70.97, aliases: ['Kotaddu'] },
   { key: 'lahore', en: 'Lahore', ur: 'لاہور', lat: 31.55, lng: 74.34 },
   { key: 'layyah', en: 'Layyah', ur: 'لیہ', lat: 30.96, lng: 70.94, aliases: ['Leiah', 'Layya'] },
   { key: 'lodhran', en: 'Lodhran', ur: 'لودھراں', lat: 29.54, lng: 71.63 },
   { key: 'mandi-bahauddin', en: 'Mandi Bahauddin', ur: 'منڈی بہاؤالدین', lat: 32.59, lng: 73.49, aliases: ['Mandi Bahaudin', 'Mandi Baha ud Din', 'M.B. Din'] },
   { key: 'mianwali', en: 'Mianwali', ur: 'میانوالی', lat: 32.58, lng: 71.54 },
   { key: 'multan', en: 'Multan', ur: 'ملتان', lat: 30.2, lng: 71.47 },
+  { key: 'murree', en: 'Murree', ur: 'مری', lat: 33.91, lng: 73.39, aliases: ['Mari'] },
   { key: 'muzaffargarh', en: 'Muzaffargarh', ur: 'مظفر گڑھ', lat: 30.07, lng: 71.19, aliases: ['Muzafargarh', 'Muzaffar Garh'] },
   { key: 'nankana-sahib', en: 'Nankana Sahib', ur: 'ننکانہ صاحب', lat: 31.45, lng: 73.71, aliases: ['Nankana'] },
   { key: 'narowal', en: 'Narowal', ur: 'نارووال', lat: 32.1, lng: 74.87 },
@@ -39,8 +41,11 @@ export const PUNJAB_DISTRICTS: District[] = [
   { key: 'sargodha', en: 'Sargodha', ur: 'سرگودھا', lat: 32.08, lng: 72.67 },
   { key: 'sheikhupura', en: 'Sheikhupura', ur: 'شیخوپورہ', lat: 31.71, lng: 73.99, aliases: ['Shekhupura', 'Sheikhupur'] },
   { key: 'sialkot', en: 'Sialkot', ur: 'سیالکوٹ', lat: 32.49, lng: 74.53 },
+  { key: 'talagang', en: 'Talagang', ur: 'تلہ گنگ', lat: 32.93, lng: 72.42 },
+  { key: 'taunsa', en: 'Taunsa', ur: 'تونسہ', lat: 30.7, lng: 70.65, aliases: ['Taunsa Sharif'] },
   { key: 'toba-tek-singh', en: 'Toba Tek Singh', ur: 'ٹوبہ ٹیک سنگھ', lat: 30.97, lng: 72.48, aliases: ['Toba'] },
   { key: 'vehari', en: 'Vehari', ur: 'وہاڑی', lat: 30.04, lng: 72.35, aliases: ['Vihari'] },
+  { key: 'wazirabad', en: 'Wazirabad', ur: 'وزیر آباد', lat: 32.44, lng: 74.12, aliases: ['Wazir Abad'] },
 ];
 
 const norm = (s: string) =>

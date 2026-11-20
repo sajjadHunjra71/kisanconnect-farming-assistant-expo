@@ -111,7 +111,11 @@ export async function deleteAccount() {
   const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
   if (error) throw mapError(error);
   beginUserSignOut();
-  await supabase.auth.signOut({ scope: 'local' });
-  if (userId) await finishUserSignOut(userId);
-  else cancelUserSignOut();
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } finally {
+    // The account is gone on the server: always wipe this user's local database file.
+    if (userId) await finishUserSignOut(userId);
+    else cancelUserSignOut();
+  }
 }

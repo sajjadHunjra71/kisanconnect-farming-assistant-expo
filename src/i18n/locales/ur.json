@@ -329,7 +329,12 @@
     "deleteTitle": "اکاؤنٹ ختم کریں؟",
     "deleteBody": "آپ کا پروفائل اور کھیت کا ڈیٹا ہمیشہ کے لیے ختم ہو جائے گا۔ یہ واپس نہیں ہو سکتا۔",
     "deleteConfirm": "ہمیشہ کے لیے ختم کریں",
-    "signOutConfirm": "کسان کنیکٹ سے سائن آؤٹ کریں؟"
+    "signOutConfirm": "کسان کنیکٹ سے سائن آؤٹ کریں؟",
+    "exportData": "Export my data",
+    "exportDataBody": "Farms, crops and activity log as a JSON file",
+    "exportTitle": "KisanConnect data",
+    "exportFailed": "Couldn't export your data. Please try again.",
+    "exportUnavailable": "Sharing isn't available on this device."
   },
   "sync": {
     "title": "ڈیٹا اپ لوڈ",

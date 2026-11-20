@@ -6,6 +6,9 @@ import { ActivityIndicator, Alert, View } from 'react-native';
 
 import { Card, Divider, FormError, ListRow, Screen, ScreenHeader, SectionHeader, SegmentedControl, Text, Toggle } from '@/components/ui';
 import { deleteAccount, signOut } from '@/features/auth/auth-service';
+import { ExportUnavailableError, exportMyData } from '@/features/export/export-data';
+import { useRepos } from '@/features/farm/hooks';
+import { sampleUser } from '@/mocks/sample-data';
 import { useAuthAction } from '@/features/auth/use-auth-action';
 import { LanguagePicker } from '@/features/settings/components';
 import { confirmSignOut } from '@/features/sync/confirm-sign-out';
@@ -20,7 +23,27 @@ export default function SettingsScreen() {
   const status = useAuthStore((s) => s.status);
   const email = useAuthStore((s) => s.session?.user.email ?? null);
   const { run, error } = useAuthAction();
-  const [busy, setBusy] = useState<'signOut' | 'delete' | null>(null);
+  const [busy, setBusy] = useState<'signOut' | 'delete' | 'export' | null>(null);
+  const repos = useRepos();
+  const profile = useAuthStore((s) => s.profile);
+  const language = useSettingsStore((s) => s.language);
+  const defaultUnits = useSettingsStore((s) => s.units);
+
+  const doExport = async () => {
+    if (!repos) return;
+    setBusy('export');
+    try {
+      const exportProfile =
+        repos.kind === 'sample'
+          ? { email: sampleUser.email, full_name: sampleUser.name, district: null, language, units: defaultUnits }
+          : { email, full_name: profile?.full_name ?? null, district: profile?.district ?? null, language: profile?.language ?? language, units: profile?.units ?? defaultUnits };
+      await exportMyData(repos, exportProfile, t('settings.exportTitle'));
+    } catch (e) {
+      Alert.alert(e instanceof ExportUnavailableError ? t('settings.exportUnavailable') : t('settings.exportFailed'));
+    } finally {
+      setBusy(null);
+    }
+  };
   const signedIn = status === 'signedIn';
 
   const doSignOut = async () => {
@@ -127,6 +150,15 @@ export default function SettingsScreen() {
             icon={signedIn ? 'account-circle-outline' : 'account-off-outline'}
             title={signedIn && email ? t('settings.signedInAs', { email }) : t('settings.demoMode')}
             chevron={false}
+          />
+          <Divider inset={52} />
+          <ListRow
+            icon="database-export-outline"
+            title={t('settings.exportData')}
+            subtitle={t('settings.exportDataBody')}
+            onPress={busy || !repos ? undefined : () => void doExport()}
+            chevron={false}
+            trailing={busy === 'export' ? spinner : undefined}
           />
           <Divider inset={52} />
           <ListRow icon="shield-lock-outline" title={t('settings.privacy')} onPress={() => undefined} />
