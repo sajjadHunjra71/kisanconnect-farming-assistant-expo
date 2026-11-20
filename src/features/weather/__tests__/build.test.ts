@@ -69,3 +69,34 @@ describe('buildAdvisories', () => {
     expect(buildAdvisories({ ...base, nowHour: now, forecast: f, crops: [crop('w', 'wheat', '2026-10-10')], activities: [], tr }).length).toBeGreaterThan(0);
   });
 });
+
+describe('advice strings', () => {
+  it('every key the builder can produce exists in en.json and ur.json', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { DISEASE_RULES } = require('@/engine/weather-rules') as typeof import('@/engine/weather-rules');
+    const keys = [
+      'advice.sprayGood.today',
+      'advice.sprayGood.tomorrow',
+      'advice.sprayGoodBody',
+      'advice.sprayNone',
+      ...['rain', 'wind', 'heat'].map((r) => `advice.sprayReason.${r}`),
+      ...['heat', 'frost', 'heavy-rain', 'strong-wind'].flatMap((k) => [`advice.alert.${k}.title`, `advice.alert.${k}.body`]),
+      ...DISEASE_RULES.flatMap((r) => [`advice.disease.${r.id}.title`, `advice.disease.${r.id}.body`]),
+      'advice.irrigation.skip.title',
+      'advice.irrigation.skip.body',
+      'advice.irrigation.due.now',
+      'advice.irrigation.due.tomorrow',
+      'advice.irrigation.due.soon',
+      'advice.irrigation.ok_one',
+      'advice.irrigation.ok_other',
+      'advice.irrigation.body',
+      'weather.today',
+    ];
+    for (const lang of ['en', 'ur']) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const json = require(`@/i18n/locales/${lang}.json`) as Record<string, unknown>;
+      const get = (k: string) => k.split('.').reduce<unknown>((o, p) => (o as Record<string, unknown> | undefined)?.[p], json);
+      expect(keys.filter((k) => typeof get(k) !== 'string').map((k) => `${lang}:${k}`)).toEqual([]);
+    }
+  });
+});

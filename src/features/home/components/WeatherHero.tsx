@@ -8,9 +8,9 @@ import { useDirection } from '@/hooks/use-direction';
 import { useTheme } from '@/theme';
 import type { WeatherNow } from '@/types/domain';
 
-type Props = { weather: WeatherNow; onPress?: () => void };
+type Props = { weather: WeatherNow; offline?: boolean; onPress?: () => void };
 
-export function WeatherHero({ weather, onPress }: Props) {
+export function WeatherHero({ weather, offline, onPress }: Props) {
   const { colors, radius, spacing } = useTheme();
   const { row, isRTL } = useDirection();
   const { t } = useTranslation();
@@ -44,7 +44,7 @@ export function WeatherHero({ weather, onPress }: Props) {
         </View>
         <View style={{ flexDirection: row, justifyContent: 'space-between', alignItems: 'center' }}>
           <Text variant="caption" style={{ color: colors.onHeroMuted }}>
-            {t('common.updatedMinutes', { count: minutes })} · {weather.source}
+            {offline ? `${t('weather.offline')} · ` : ''}{minutes < 60 ? t('common.updatedMinutes', { count: minutes }) : t('weather.updatedHours', { count: Math.floor(minutes / 60) })} · {weather.source}
           </Text>
           {onPress ? (
             <View style={{ flexDirection: row, alignItems: 'center', gap: 4 }}>

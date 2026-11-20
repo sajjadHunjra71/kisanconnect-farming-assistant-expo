@@ -9,7 +9,8 @@ import { CropProgressCard, GreetingHeader, QuickActions, TaskItem, WeatherHero }
 import { PriceCard } from '@/features/mandi/components';
 import { AdvisoryCard } from '@/features/weather/components';
 import { useLocalized } from '@/hooks/use-localized';
-import { sampleAdvisories, sampleFarm, sampleMandi, sampleTasks, sampleUser, sampleWeatherNow } from '@/mocks/sample-data';
+import { sampleFarm, sampleMandi, sampleTasks, sampleUser } from '@/mocks/sample-data';
+import { useFarmWeather } from '@/features/weather/use-farm-weather';
 import { selectDisplayName, useAuthStore } from '@/store/auth-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { useTheme } from '@/theme';
@@ -20,6 +21,7 @@ export default function HomeScreen() {
   const { spacing } = useTheme();
   const l = useLocalized();
   const selectedFarmId = useSettingsStore((s) => s.selectedFarmId);
+  const weather = useFarmWeather();
   const language = useSettingsStore((s) => s.language);
   const { data } = useRepoQuery(
     async (repos) => {
@@ -37,7 +39,7 @@ export default function HomeScreen() {
     <Screen withTabBar>
       <GreetingHeader name={displayName ?? sampleUser.name} location={location} />
       <SampleDataNotice />
-      <WeatherHero weather={sampleWeatherNow} onPress={() => router.push('/(tabs)/weather')} />
+      {weather.view ? <WeatherHero weather={weather.view.now} offline={weather.result?.offline} onPress={() => router.push('/(tabs)/weather')} /> : null}
       <QuickActions />
       {data && data.crops.length === 0 ? (
         <Card>
@@ -50,7 +52,7 @@ export default function HomeScreen() {
 
       <View style={{ gap: spacing.md }}>
         <SectionHeader title={t('home.advisories')} actionLabel={t('common.seeAll')} onAction={() => router.push('/(tabs)/weather')} />
-        {sampleAdvisories.slice(0, 2).map((a) => (
+        {(weather.view?.advisories ?? []).slice(0, 2).map((a) => (
           <AdvisoryCard key={a.id} advisory={a} />
         ))}
       </View>

@@ -148,7 +148,16 @@
     },
     "now": "Now",
     "rainChance": "{{value}}% chance of rain",
-    "scrubHint": "Slide to see the whole day"
+    "scrubHint": "Slide to see the whole day",
+    "today": "Today",
+    "updatedHours_one": "Updated {{count}} hour ago",
+    "updatedHours_other": "Updated {{count}} hours ago",
+    "offline": "Offline · showing the last saved forecast",
+    "noLocation": "Add your farm's location to see its weather.",
+    "setLocation": "Set farm location",
+    "loadFailed": "Couldn't load the forecast. Pull down to try again.",
+    "noFarm": "Add a farm to see weather for it.",
+    "indicative": "Advice uses simple rules and is a guide only."
   },
   "scan": {
     "title": "Scan a leaf",
@@ -485,5 +494,64 @@
     "never": "Not logged",
     "sprays": "Sprays",
     "totalCost": "Total cost since {{date}}"
+  },
+  "advice": {
+    "sprayGood": {
+      "today": "Good to spray today {{from}}–{{to}}",
+      "tomorrow": "Good to spray tomorrow {{from}}–{{to}}"
+    },
+    "sprayGoodBody": "Light wind, no rain for 6 hours after, not too hot.",
+    "sprayNone": "No good spray window in the next 2 days",
+    "sprayReason": {
+      "rain": "Rain is expected, so spray would wash off.",
+      "wind": "Wind is too strong, so spray would drift.",
+      "heat": "It's too hot, so spray would evaporate."
+    },
+    "alert": {
+      "heat": {
+        "title": "Heatwave: up to {{value}}°C",
+        "body": "Irrigate in the evening or early morning and don't spray in the afternoon."
+      },
+      "frost": {
+        "title": "Frost risk: down to {{value}}°C",
+        "body": "A light irrigation the evening before helps protect wheat and young crops."
+      },
+      "heavy-rain": {
+        "title": "Heavy rain: about {{value}} mm",
+        "body": "Clear field drains and wait with fertilizer and spraying."
+      },
+      "strong-wind": {
+        "title": "Strong wind: gusts up to {{value}} km/h",
+        "body": "Don't spray. Tall crops like sugarcane and maize may fall over."
+      }
+    },
+    "disease": {
+      "wheat-yellow-rust": {
+        "title": "Yellow rust weather for wheat",
+        "body": "Cool and humid for about {{hours}} hours in the next 3 days. Check lower leaves for yellow stripes."
+      },
+      "rice-blast": {
+        "title": "Rice blast weather",
+        "body": "Warm and very humid for about {{hours}} hours in the next 3 days. Look for eye-shaped spots on leaves."
+      },
+      "cotton-boll-rot": {
+        "title": "Boll rot weather for cotton",
+        "body": "A long humid spell (about {{hours}} hours). Check opening bolls for rot."
+      }
+    },
+    "irrigation": {
+      "skip": {
+        "title": "Skip irrigation for {{crop}}",
+        "body": "About {{mm}} mm of rain is expected in the next 3 days. The crop uses about {{need}} mm a day."
+      },
+      "due": {
+        "now": "Irrigate {{crop}} now",
+        "tomorrow": "Irrigate {{crop}} tomorrow",
+        "soon": "Irrigate {{crop}} in {{count}} days"
+      },
+      "ok_one": "{{crop}}: next irrigation in about {{count}} day",
+      "ok_other": "{{crop}}: next irrigation in about {{count}} days",
+      "body": "The crop uses about {{need}} mm of water a day; about {{used}} mm used since the last irrigation or rain."
+    }
   }
 }
