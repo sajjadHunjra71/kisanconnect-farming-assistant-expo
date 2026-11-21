@@ -187,16 +187,16 @@ export default function FarmEditScreen() {
             {locMessage}
           </Text>
         ) : null}
-        <View style={{ flexDirection: row, gap: spacing.sm }}>
+        {/* Full width each: the labels are long (and longer in Urdu). */}
+        <View style={{ gap: spacing.sm }}>
           <Button
             label={locating ? t('farm.form.locating') : t('farm.form.useLocation')}
             icon="crosshairs-gps"
             variant="secondary"
             onPress={() => void locateMe()}
             disabled={locating}
-            style={{ flex: 1 }}
           />
-          <Button label={t('farm.form.pickDistrict')} icon="format-list-bulleted" variant="secondary" onPress={() => setPickerOpen((o) => !o)} style={{ flex: 1 }} />
+          <Button label={t('farm.form.pickDistrict')} icon="format-list-bulleted" variant="secondary" onPress={() => setPickerOpen((o) => !o)} />
         </View>
         {locating ? <ActivityIndicator color={colors.primary} /> : null}
         {pickerOpen ? (

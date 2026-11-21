@@ -1,4 +1,4 @@
-import DateTimePicker, { DateTimePickerAndroid, type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
 import { Platform, View } from 'react-native';
 
@@ -42,9 +42,9 @@ export function DateField({ label, value, onChange, min, max, error }: Props) {
     );
   }
 
-  const handle = (e: DateTimePickerEvent, d?: Date) => {
+  const pick = (_e: unknown, d: Date) => {
     if (Platform.OS === 'android') setOpen(false);
-    if (e.type === 'set' && d) onChange(clamp(toLocalDate(d), min, max));
+    onChange(clamp(toLocalDate(d), min, max));
   };
 
   const press = () => {
@@ -54,7 +54,8 @@ export function DateField({ label, value, onChange, min, max, error }: Props) {
         mode: 'date',
         minimumDate: min ? parseLocalDate(min) : undefined,
         maximumDate: max ? parseLocalDate(max) : undefined,
-        onChange: handle,
+        onValueChange: pick,
+        onDismiss: () => setOpen(false),
       });
     } else setOpen((o) => !o);
   };
@@ -70,7 +71,7 @@ export function DateField({ label, value, onChange, min, max, error }: Props) {
             display="inline"
             minimumDate={min ? parseLocalDate(min) : undefined}
             maximumDate={max ? parseLocalDate(max) : undefined}
-            onChange={handle}
+            onValueChange={pick}
           />
         ) : null}
       </Card>

@@ -36,7 +36,8 @@ export default function CropDetailScreen() {
 
   const def = CROP_CALENDARS[crop.crop_key];
   const active = crop.status === 'active';
-  const p = cropProgress(crop.crop_key, crop.sowing_date);
+  // A harvested/failed crop is shown as it was on its last day.
+  const p = cropProgress(crop.crop_key, crop.sowing_date, active ? undefined : (crop.harvested_on ?? crop.updated_at.slice(0, 10)));
   const isLast = p.stageIndex === def.stages.length - 1;
 
   const markHarvested = () =>
@@ -96,6 +97,7 @@ export default function CropDetailScreen() {
             <Text variant="title">{active ? l(p.stage.name) : t(`crop.status.${crop.status}`)}</Text>
             <Text variant="caption" color="inkMuted">
               {[
+                crop.variety,
                 t('crop.sown', { date: formatDate(crop.sowing_date, language) }),
                 crop.harvested_on ? t('crop.harvestedOn', { date: formatDate(crop.harvested_on, language) }) : null,
                 crop.area_value != null && crop.area_unit ? formatArea(t, crop.area_value, crop.area_unit) : null,
@@ -117,7 +119,7 @@ export default function CropDetailScreen() {
         <SectionHeader title={t('crop.timeline')} />
         <Card style={{ gap: spacing.md }}>
           {def.stages.map((s, i) => {
-            const done = p.status === 'completed' || (p.status === 'growing' && i < p.stageIndex);
+            const done = p.status === 'completed' || (p.status === 'growing' && (active ? i < p.stageIndex : i <= p.stageIndex));
             const current = active && p.status === 'growing' && i === p.stageIndex;
             return (
               <View key={s.key} style={{ flexDirection: row, alignItems: 'center', gap: spacing.md }} accessibilityState={{ selected: current }}>

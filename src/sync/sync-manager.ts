@@ -14,7 +14,6 @@ import { useDataVersion } from '@/store/data-version';
 import { useSyncStore } from '@/store/sync-store';
 
 import { showLocalAlerts } from '@/features/notifications/local-alerts';
-import { useAuthStore } from '@/store/auth-store';
 import type { AlertsLocal } from '@/db/alerts-local';
 
 import { syncAlerts } from './alerts-sync';
@@ -96,6 +95,8 @@ async function runOnce(mode: Mode) {
       await pull(deps);
       if (a !== active) return;
       await syncAlerts(createSupabaseAlertsTransport(supabase!), a.alerts);
+      // Loaded lazily: auth-store imports this module (avoids a require cycle).
+      const { useAuthStore } = await import('@/store/auth-store');
       await showLocalAlerts(a.alerts, useAuthStore.getState().profile?.notification_prefs).catch(() => 0);
     }
     if (a !== active) return;
