@@ -5,7 +5,7 @@ import { ActivityIndicator, RefreshControl, View } from 'react-native';
 
 import { Badge, Card, EmptyState, Icon, SampleDataNotice, Screen, ScreenHeader, SectionHeader, Text } from '@/components/ui';
 import { districtLabel } from '@/features/farm/format';
-import { AdvisoryCard, DailyRow, DaySkyCard, SprayWindow } from '@/features/weather/components';
+import { AdvisoryCard, DailyRow, DaySkyCard, HourlyStrip, SprayWindow } from '@/features/weather/components';
 import { useFarmWeather } from '@/features/weather/use-farm-weather';
 import { useDirection } from '@/hooks/use-direction';
 import { useSettingsStore } from '@/store/settings-store';
@@ -66,6 +66,12 @@ export default function WeatherScreen() {
             <Text variant="caption" color="warning">
               {t('weather.limitedData')}
             </Text>
+          ) : null}
+          {v.next24.length > 0 ? (
+            <View style={{ gap: spacing.sm }}>
+              <SectionHeader title={t('weather.next24')} />
+              <HourlyStrip hours={v.next24} />
+            </View>
           ) : null}
           {v.spray.length > 0 ? <SprayWindow slots={v.spray.map((s) => ({ label: s.time.slice(11, 13), status: s.status }))} /> : null}
 

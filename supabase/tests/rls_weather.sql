@@ -11,7 +11,7 @@ values
   ('bbbbbbbb-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'wx-b@example.test');
 
 insert into public.weather_cache (cache_key, cell, provider, schema_version, forecast)
-values ('31.5_74.3:open-meteo:v2', '31.5_74.3', 'open-meteo', 2, '{}');
+values ('31.5_74.3:open-meteo:v3', '31.5_74.3', 'open-meteo', 3, '{}');
 
 insert into public.alerts (id, user_id, farm_id, kind, severity, title, body, start_date, dedupe_key)
 values

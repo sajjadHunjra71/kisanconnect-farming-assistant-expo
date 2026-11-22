@@ -1,6 +1,6 @@
 // KisanConnect · weather-proxy
 // POST { lat, lng } → { forecast, cached, stale } for the ~11 km grid cell around the point.
-// Cache: public.weather_cache, key = cell + provider + schema version, fresh for 1 hour.
+// Cache: public.weather_cache, key = cell + provider + schema version, fresh for 15 minutes.
 // Providers: Open-Meteo, then MET Norway if Open-Meteo fails; a stale copy is served if both fail.
 // Each user may trigger at most NEW_FETCH_LIMIT provider fetches per hour (cache hits are free).
 // Only the cell centre is sent to providers. Coordinates are never logged.
@@ -10,7 +10,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { MET_USER_AGENT, metNorwayUrl, parseMetNorway } from '../_shared/engine/met-norway.ts';
 import { cacheKey, gridCell, inPakistanBox, openMeteoUrl, parseOpenMeteo, type Forecast, type Provider } from '../_shared/engine/weather-rules.ts';
 
-const FRESH_MS = 60 * 60 * 1000;
+/** How long a cached forecast is served without asking the provider again. */
+const CACHE_FRESH_MS = 15 * 60 * 1000;
 const TIMEOUT_MS = 10_000;
 const NEW_FETCH_LIMIT = 30;
 
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
 
   const { data: rows } = await admin.from('weather_cache').select('provider, forecast, fetched_at').in('cache_key', Object.values(keys));
   const cached = (rows ?? []) as { provider: Provider; forecast: Forecast; fetched_at: string }[];
-  const fresh = (p: Provider) => cached.find((r) => r.provider === p && Date.now() - Date.parse(r.fetched_at) < FRESH_MS);
+  const fresh = (p: Provider) => cached.find((r) => r.provider === p && Date.now() - Date.parse(r.fetched_at) < CACHE_FRESH_MS);
   const hit = fresh('open-meteo') ?? fresh('met-norway');
   if (hit) return json({ forecast: hit.forecast, cached: true, stale: false }, 200);
   const newest = [...cached].sort((a, b) => Date.parse(b.fetched_at) - Date.parse(a.fetched_at))[0];

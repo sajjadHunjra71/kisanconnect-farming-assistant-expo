@@ -163,7 +163,8 @@
     "limitedData": "Some weather data is missing, so some advice is limited.",
     "howTitle": "How is this worked out?",
     "howBody": "Spray: good when wind is 3–15 km/h, gusts under 25, under 35 °C and no rain likely for 6 hours, between 5 AM and 7 PM. Irrigation: the crop's daily water use (ET₀ × crop factor for its stage) is added up from your last logged irrigation, minus useful rain (80% of days with 5 mm or more). When the used water reaches what the roots can easily take from your soil type, irrigation is due. Rice is kept flooded. All advice is a guide only.",
-    "sprayCaution": "Care"
+    "sprayCaution": "Care",
+    "next24": "Next 24 hours"
   },
   "scan": {
     "title": "پتا اسکین کریں",

@@ -15,11 +15,12 @@ export function makeForecast(opts: { start?: string; days?: number; hourly?: (ti
   const col = <T, K extends keyof T>(rows: T[], k: K) => rows.map((r) => r[k]);
   return {
     provider: 'open-meteo',
-    schemaVersion: 2,
+    schemaVersion: 3,
     lat: 31.5,
     lng: 74.3,
     utcOffsetSeconds: 18000,
     fetchedAt: '2026-11-20T05:00:00.000Z',
+    current: null,
     hourly: {
       time,
       tempC: col(Hs, 'tempC'),

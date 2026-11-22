@@ -17,7 +17,7 @@ export type Num = number | null;
 export type Provider = 'open-meteo' | 'met-norway';
 
 /** Bump when the Forecast shape changes (part of the server cache key). */
-export const FORECAST_SCHEMA_VERSION = 2;
+export const FORECAST_SCHEMA_VERSION = 3;
 
 export type Forecast = {
   provider: Provider;
@@ -27,6 +27,20 @@ export type Forecast = {
   /** Seconds east of UTC for the local times below (Pakistan: 18000). */
   utcOffsetSeconds: number;
   fetchedAt: string; // ISO instant
+  /**
+   * Conditions right now (Open-Meteo `current`, updated every 15 minutes).
+   * null when the provider has none (MET Norway) → "now" falls back to the hourly value.
+   */
+  current: {
+    time: string; // local 'YYYY-MM-DDTHH:mm'
+    tempC: Num;
+    feelsLikeC: Num;
+    humidity: Num;
+    precipMm: Num;
+    windKmh: Num;
+    gustKmh: Num;
+    code: Num;
+  } | null;
   /** Hourly, local time 'YYYY-MM-DDTHH:00', consecutive hours. Includes past days. */
   hourly: {
     time: string[];
@@ -59,6 +73,7 @@ export const PK_UTC_OFFSET = 18000;
 
 const HOURLY =
   'temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,visibility,weather_code';
+const CURRENT = 'temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m';
 const DAILY = 'temperature_2m_max,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration,weather_code';
 
 /** Open-Meteo forecast URL (no key). Wind in km/h, local Pakistan time. */
@@ -66,6 +81,7 @@ export function openMeteoUrl(lat: number, lng: number): string {
   const q = [
     `latitude=${lat}`,
     `longitude=${lng}`,
+    `current=${CURRENT}`,
     `hourly=${HOURLY}`,
     `daily=${DAILY}`,
     'timezone=Asia%2FKarachi',
@@ -121,6 +137,8 @@ export function parseOpenMeteo(body: unknown, fetchedAt: string): Forecast {
   const n = time.length;
   const m = date.length;
   if (n === 0 || m === 0) throw new Error('open-meteo: no data');
+  const c = b.current && typeof b.current === 'object' ? (b.current as Json) : null;
+  const one = (k: string): Num => (c && typeof c[k] === 'number' && Number.isFinite(c[k]) ? (c[k] as number) : null);
   return {
     provider: 'open-meteo',
     schemaVersion: FORECAST_SCHEMA_VERSION,
@@ -128,6 +146,19 @@ export function parseOpenMeteo(body: unknown, fetchedAt: string): Forecast {
     lng: typeof b.longitude === 'number' ? b.longitude : 0,
     utcOffsetSeconds: typeof b.utc_offset_seconds === 'number' ? b.utc_offset_seconds : PK_UTC_OFFSET,
     fetchedAt,
+    current:
+      c && typeof c.time === 'string'
+        ? {
+            time: c.time,
+            tempC: one('temperature_2m'),
+            feelsLikeC: one('apparent_temperature'),
+            humidity: one('relative_humidity_2m'),
+            precipMm: one('precipitation'),
+            windKmh: one('wind_speed_10m'),
+            gustKmh: one('wind_gusts_10m'),
+            code: one('weather_code'),
+          }
+        : null,
     hourly: {
       time,
       tempC: series(h, 'temperature_2m', n),

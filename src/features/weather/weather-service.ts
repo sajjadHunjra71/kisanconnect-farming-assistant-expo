@@ -1,16 +1,17 @@
 /**
- * Forecast for a farm. Signed in: Supabase `weather-proxy` (shared 1 h cache per grid cell
- * on the server). The phone keeps the last forecast per user + farm (AsyncStorage) so it
+ * Forecast for a farm. Signed in: Supabase `weather-proxy` (shared 15-minute cache per grid
+ * cell on the server). The phone keeps the last forecast per user + farm (AsyncStorage) so it
  * shows offline with its age; it's cleared when that user signs out.
  * Demo mode / no backend: sample forecast.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { gridCell, type Forecast } from '@/engine/weather-rules';
+import { FORECAST_SCHEMA_VERSION, gridCell, type Forecast } from '@/engine/weather-rules';
 import { supabase } from '@/lib/supabase';
 import { sampleForecast } from '@/mocks/sample-forecast';
 
-export const LOCAL_FRESH_MS = 30 * 60 * 1000;
+/** Phone copy is used without asking the server while younger than this. */
+export const LOCAL_FRESH_MS = 15 * 60 * 1000;
 const PREFIX = 'kisanconnect-weather:';
 const key = (userId: string, farmId: string) => `${PREFIX}${userId}:${farmId}`;
 
@@ -28,7 +29,7 @@ async function readLocal(k: string): Promise<Forecast | null> {
   try {
     const raw = await AsyncStorage.getItem(k);
     const f = raw ? (JSON.parse(raw) as Forecast) : null;
-    return f && f.schemaVersion === 2 ? f : null; // ignore copies from an older app version
+    return f && f.schemaVersion === FORECAST_SCHEMA_VERSION ? f : null; // ignore copies from an older app version
   } catch {
     return null;
   }

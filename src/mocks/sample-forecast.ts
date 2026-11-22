@@ -37,7 +37,8 @@ export function sampleForecast(now = new Date()): Forecast {
     lat: 31.4,
     lng: 73.1,
     utcOffsetSeconds: PK_UTC_OFFSET,
-    fetchedAt: new Date(now.getTime() - 40 * 60_000).toISOString(),
+    fetchedAt: new Date(now.getTime() - 10 * 60_000).toISOString(),
+    current: null,
     hourly: {
       time,
       tempC: col('tempC'),

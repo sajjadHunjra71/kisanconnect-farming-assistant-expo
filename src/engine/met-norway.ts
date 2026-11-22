@@ -126,5 +126,5 @@ export function parseMetNorway(body: unknown, fetchedAt: string): Forecast {
     daily.code.push(codes.length ? Math.max(...codes) : null);
   }
 
-  return { provider: 'met-norway', schemaVersion: FORECAST_SCHEMA_VERSION, lat, lng, utcOffsetSeconds: PK_UTC_OFFSET, fetchedAt, hourly, daily };
+  return { provider: 'met-norway', schemaVersion: FORECAST_SCHEMA_VERSION, lat, lng, utcOffsetSeconds: PK_UTC_OFFSET, fetchedAt, current: null, hourly, daily };
 }

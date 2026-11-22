@@ -1,4 +1,6 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { CROP_CALENDARS, OLD_FORECAST_MINUTES, ageMinutes, districtByName, limitedData, localHour, type CropId } from '@/engine';
 import { useRepoQuery } from '@/features/farm/hooks';
@@ -7,7 +9,7 @@ import i18n from '@/i18n';
 import { useAuthStore } from '@/store/auth-store';
 import { useSettingsStore } from '@/store/settings-store';
 
-import { ATTRIBUTION, buildAdvisories, dailyForecast, dayHours, spraySlots, weatherNow, type Tr } from './build';
+import { ATTRIBUTION, buildAdvisories, dailyForecast, dayHours, next24Hours, spraySlots, weatherNow, type Tr } from './build';
 import { getForecast, type ForecastResult } from './weather-service';
 
 /** Same text in both app languages (for Localized fields). */
@@ -75,6 +77,20 @@ export function useFarmWeather() {
     if (!farmLoading) void load();
   }, [load, farmLoading]);
 
+  // Screen comes into view or the app comes back to the front: get a newer forecast
+  // if the phone's copy is older than 15 minutes (getForecast skips the network otherwise).
+  useFocusEffect(
+    useCallback(() => {
+      if (!farmLoading) void load();
+    }, [load, farmLoading]),
+  );
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && !farmLoading) void load();
+    });
+    return () => sub.remove();
+  }, [load, farmLoading]);
+
   const view = useMemo(() => {
     if (!result) return null;
     const f = result.forecast;
@@ -85,6 +101,7 @@ export function useFarmWeather() {
     return {
       now: weatherNow(f, nowHour),
       hours,
+      next24: next24Hours(f, nowHour),
       nowIndex: Math.max(0, hours.findIndex((h) => h.hour === nowHour.slice(11, 16))),
       ...dailyForecast(f, today, dayName),
       spray: old ? [] : spraySlots(f, nowHour),

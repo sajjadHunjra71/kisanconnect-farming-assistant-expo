@@ -31,9 +31,11 @@ If something different happens, note the step number and what you saw.
 2. Open the **Weather** tab.
    - **Should happen:** no "Sample data" badge. The title shows your farm's district. The day slider shows today's hours. Under "7-day forecast" the first row is "Today", and below it is a second list called **"Outlook (less certain)"** for days 8–14. At the bottom it says **"Weather data by Open-Meteo.com (CC BY 4.0)"**.
 3. Supabase → Table Editor → `weather_cache`.
-   - **Should happen:** one row, `cache_key` like `31.5_74.3:open-meteo:v2`, `fetched_at` = just now. Nothing in the row shows your farm's exact location (only the rounded cell).
+   - **Should happen:** one row, `cache_key` like `31.5_74.3:open-meteo:v3`, `fetched_at` = just now. Nothing in the row shows your farm's exact location (only the rounded cell).
 4. Pull down to refresh.
-   - **Should happen:** `fetched_at` does **not** change within an hour (the cached copy is used).
+   - **Should happen:** `fetched_at` does **not** change within 15 minutes (the cached copy is used). After 15 minutes, opening the Weather tab again (or bringing the app back to the front) gets a newer forecast.
+5. Look at **Next 24 hours** under the day slider.
+   - **Should happen:** 24 hourly temperatures from now, continuing past midnight into tomorrow.
 
 ## Step 2: Spray strip and advice
 

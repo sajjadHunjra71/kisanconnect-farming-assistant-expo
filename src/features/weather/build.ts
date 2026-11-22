@@ -28,22 +28,45 @@ export const ATTRIBUTION: Record<Provider, string> = {
 };
 const SOURCE: Record<Provider, string> = { 'open-meteo': 'Open-Meteo', 'met-norway': 'MET Norway' };
 
+/**
+ * Conditions now: Open-Meteo's 15-minute `current` block when it's present and recent,
+ * otherwise the hourly value for this hour.
+ */
 export function weatherNow(f: Forecast, nowHour: string): WeatherNow {
   const h = f.hourly;
   const i = Math.max(0, h.time.indexOf(nowHour));
   const di = f.daily.date.indexOf(nowHour.slice(0, 10));
-  const t = h.tempC[i] ?? 0;
+  const c = f.current && f.current.tempC !== null && hoursApart(f.current.time, nowHour) <= 1 ? f.current : null;
+  const t = c?.tempC ?? h.tempC[i] ?? 0;
+  const pick = (cur: number | null | undefined, hourly: number | null) => cur ?? hourly ?? 0;
   return {
     tempC: Math.round(t),
-    feelsLikeC: Math.round(h.feelsLikeC[i] ?? t),
-    condition: conditionFromCode(h.code[i], h.tempC[i]),
-    humidity: Math.round(h.humidity[i] ?? 0),
-    windKmh: Math.round(h.windKmh[i] ?? 0),
+    feelsLikeC: Math.round(pick(c?.feelsLikeC, h.feelsLikeC[i]) || t),
+    condition: conditionFromCode(c?.code ?? h.code[i], t),
+    humidity: Math.round(pick(c?.humidity, h.humidity[i])),
+    windKmh: Math.round(pick(c?.windKmh, h.windKmh[i])),
     rainChance: Math.round(h.rainProb[i] ?? 0),
     et0Mm: di >= 0 && f.daily.et0Mm[di] !== null ? Math.round((f.daily.et0Mm[di] as number) * 10) / 10 : 0,
     updatedAt: f.fetchedAt,
     source: SOURCE[f.provider],
   };
+}
+
+function hoursApart(a: string, b: string): number {
+  return Math.abs(Date.parse(`${a.slice(0, 16)}:00Z`) - Date.parse(`${b.slice(0, 16)}:00Z`)) / 3_600_000;
+}
+
+/** The next 24 hours from now (crosses midnight), for the hourly strip. */
+export function next24Hours(f: Forecast, nowHour: string): HourlyForecast[] {
+  const start = f.hourly.time.findIndex((t) => t >= nowHour);
+  if (start < 0) return [];
+  const out: HourlyForecast[] = [];
+  for (let i = start; i < Math.min(f.hourly.time.length, start + 24); i++) {
+    const temp = f.hourly.tempC[i];
+    if (temp === null) continue;
+    out.push({ hour: f.hourly.time[i].slice(11, 16), tempC: Math.round(temp), condition: conditionFromCode(f.hourly.code[i], temp), rainChance: Math.round(f.hourly.rainProb[i] ?? 0) });
+  }
+  return out;
 }
 
 /** Today's hours from 06:00 to 23:00 for the day slider (hours without a temperature are skipped). */

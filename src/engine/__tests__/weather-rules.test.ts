@@ -22,6 +22,7 @@ describe('open-meteo request and parsing', () => {
     for (const f of ['apparent_temperature', 'relative_humidity_2m', 'precipitation_probability', 'wind_gusts_10m', 'visibility', 'weather_code', 'et0_fao_evapotranspiration', 'precipitation_sum']) {
       expect(url).toContain(f);
     }
+    expect(url).toContain('current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m');
     expect(url).toContain('forecast_days=14');
     expect(url).toContain('past_days=30');
     expect(url).toContain('timezone=Asia%2FKarachi');
@@ -48,6 +49,9 @@ describe('open-meteo request and parsing', () => {
   it('missing values are null, never 0; missing series are all null', () => {
     const f = parseOpenMeteo(body, '2026-11-20T05:00:00Z');
     expect(f.provider).toBe('open-meteo');
+    expect(f.current).toBeNull(); // not sent → null, "now" falls back to hourly
+    const withCurrent = parseOpenMeteo({ ...body, current: { time: '2026-11-20T00:15', temperature_2m: 12.4, relative_humidity_2m: 81, weather_code: 45 } }, '');
+    expect(withCurrent.current).toEqual({ time: '2026-11-20T00:15', tempC: 12.4, feelsLikeC: null, humidity: 81, precipMm: null, windKmh: null, gustKmh: null, code: 45 });
     expect(f.hourly.tempC).toEqual([12, null]);
     expect(f.hourly.visibilityM).toEqual([null, null]); // not sent
     expect(f.hourly.feelsLikeC).toEqual([null, null]);
@@ -61,7 +65,7 @@ describe('open-meteo request and parsing', () => {
 
   it('grid cell, cache key, Pakistan box', () => {
     expect(gridCell(31.5497, 74.3436)).toEqual({ key: '31.5_74.3', lat: 31.5, lng: 74.3 });
-    expect(cacheKey('31.5_74.3', 'met-norway')).toBe('31.5_74.3:met-norway:v2');
+    expect(cacheKey('31.5_74.3', 'met-norway')).toBe('31.5_74.3:met-norway:v3');
     expect(inPakistanBox(31.5, 74.3)).toBe(true);
     expect(inPakistanBox(37.6, 74)).toBe(false);
     expect(inPakistanBox(24.86, 59.9)).toBe(false);

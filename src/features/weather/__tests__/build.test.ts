@@ -3,7 +3,7 @@ import { makeForecast } from '@/engine/__tests__/weather-fixture';
 import { DISEASE_RULE_IDS } from '@/engine/weather-rules';
 import { sampleForecast } from '@/mocks/sample-forecast';
 
-import { ATTRIBUTION, buildAdvisories, dailyForecast, dayHours, spraySlots, weatherNow } from '../build';
+import { ATTRIBUTION, buildAdvisories, dailyForecast, dayHours, next24Hours, spraySlots, weatherNow } from '../build';
 
 const tr = (key: string, params?: Record<string, string | number>) => ({ en: params ? `${key} ${JSON.stringify(params)}` : key });
 const sync = { user_id: 'u', version: 1, last_op_id: null, created_at: '', updated_at: '', deleted_at: null };
@@ -116,5 +116,21 @@ describe('advice strings', () => {
       const get = (k: string) => k.split('.').reduce<unknown>((o, p) => (o as Record<string, unknown> | undefined)?.[p], json);
       expect(keys.filter((k) => typeof get(k) !== 'string').map((k) => `${lang}:${k}`)).toEqual([]);
     }
+  });
+});
+
+describe('fresher "now" and next 24 hours', () => {
+  it('uses Open-Meteo current (15-minute) values when recent, else the hourly value', () => {
+    const f = makeForecast({});
+    const withCurrent = { ...f, current: { time: '2026-11-20T10:15', tempC: 26.6, feelsLikeC: 27, humidity: 41, precipMm: 0, windKmh: 9.4, gustKmh: 15, code: 3 } };
+    expect(weatherNow(withCurrent, '2026-11-20T10:00')).toMatchObject({ tempC: 27, humidity: 41, windKmh: 9, condition: 'cloudy' });
+    // stale current (from hours ago) is ignored
+    const stale = { ...withCurrent, current: { ...withCurrent.current, time: '2026-11-20T05:00' } };
+    expect(weatherNow(stale, '2026-11-20T10:00')).toMatchObject({ tempC: 22, humidity: 50 });
+    // next 24 hours crosses midnight
+    const hrs = next24Hours(f, '2026-11-20T20:00');
+    expect(hrs).toHaveLength(24);
+    expect(hrs[0].hour).toBe('20:00');
+    expect(hrs[4].hour).toBe('00:00');
   });
 });

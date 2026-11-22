@@ -89,5 +89,10 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - App: forecast cache per user + farm, cleared on sign-out; >24 h → "Old forecast", advice hidden. Alerts inbox + bell with unread count; read marks queued offline; local notification for alerts not pushed (works in the simulator); permission asked after the first farm is saved; Settings → alert types + quiet hours.
 - 109 unit tests.
 
+## Weather freshness (22 Nov 2026)
+- Server cache 1 h → 15 minutes (`CACHE_FRESH_MS` in weather-proxy); stale copy still served up to 24 h if providers fail; per-user fetch limit unchanged.
+- "Now" uses Open-Meteo `current` (updated every 15 minutes), falling back to the hourly value; forecast schema v3 (cache keys `…:v3`).
+- App refreshes the forecast when Weather/Home comes into view or the app returns to the front, if the phone copy is older than 15 minutes. New "Next 24 hours" hourly strip on the Weather tab.
+
 ## Next
 - Run docs/TESTING-PHASE2.md and docs/TESTING-PHASE3.md on the real Supabase project, then Phase 4.
