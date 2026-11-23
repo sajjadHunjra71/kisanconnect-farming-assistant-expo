@@ -16,6 +16,8 @@ import {
   type CropInput,
   type FarmFields,
   type FarmInput,
+  type ScanFields,
+  type ScanInput,
 } from './types';
 
 export class ValidationError extends Error {
@@ -129,4 +131,27 @@ export function farmAcres(f: Pick<FarmFields, 'area_value' | 'area_unit'>): numb
 
 export function cropAcres(c: Pick<CropFields, 'area_value' | 'area_unit'>): number | null {
   return c.area_value != null && c.area_unit ? roundArea(toAcres(c.area_value, c.area_unit), 4) : null;
+}
+
+const plainObject = (field: string, v: unknown): Record<string, unknown> | null => {
+  if (v == null) return null;
+  if (typeof v !== 'object' || Array.isArray(v)) return fail(field, 'must be an object');
+  if (JSON.stringify(v).length > 4000) fail(field, 'too large');
+  return v as Record<string, unknown>;
+};
+
+export function validateScan(input: ScanInput): ScanFields {
+  if (!isCropId(String(input.crop_key))) fail('crop_key', 'unknown crop');
+  if (input.crop_id && !input.farm_id) fail('crop_id', 'needs a farm');
+  if (input.photo_path != null && !/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg$/i.test(input.photo_path)) fail('photo_path', 'bad path');
+  return {
+    farm_id: input.farm_id || null,
+    crop_id: input.crop_id || null,
+    crop_key: input.crop_key,
+    photo_path: input.photo_path ?? null,
+    quality: plainObject('quality', input.quality),
+    model_result: plainObject('model_result', input.model_result),
+    model_version: text('model_version', input.model_version, 60),
+    ask_expert: input.ask_expert === true,
+  };
 }

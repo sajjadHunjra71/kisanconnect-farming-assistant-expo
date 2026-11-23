@@ -106,5 +106,14 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - `supabase/tests/rls_scans.sql`: 17 checks (AI columns, CAS, photo path, no delete, B can't read/list/upload/delete A's scans or photos, quota caps + refund) — pass on local Postgres with stubs; Phase 2/3 tests still pass.
 - `ai-diagnose` Edge Function (scan_id only, JWT + confirmed email + consent version, RLS ownership, photo checks, quota + refund, context without personal data, Gemini JSON mode + enum, Zod + sanitizer, one retry, ai_events). `scan-cleanup` (daily photo backstop + log purge). `delete-account` now removes the user's photos first. Type-checked with a Deno stub; not deployed.
 
+## Phase 4C: Scan in the app (24 Nov 2026)
+- Scan tab: farm + crop (defaults to the selected farm's active crop; weather "Scan a leaf" preselects the crop), take / choose photo, re-encoded to ≤ 1024 px / ≤ 400 KB without EXIF, quality check (blur/dark block with "Use anyway", no-leaf warns), picture guide, recent scans.
+- First online check asks for consent (Gemini, free-tier use, photograph only the leaf, 18+); stored as `profiles.ai_consent_*`; "Not now" keeps scans on the phone. Settings: stop online checks; About → data sources.
+- Scans sync through the Phase 2 outbox; a local queue uploads the photo, sets `photo_path`, pushes, calls `ai-diagnose`, pulls the answer and shows "Your leaf check is ready". One scan at a time, only with consent, waits on 202 (no quota / Gemini busy).
+- Result screen: status (likely / possible / unclear / not crop / failed / waiting), causes with likelihood, questions, next steps, KB advice (chemical control → "Ask an expert or your local agriculture office" until official text is added), disclaimer, Ask an expert, WhatsApp + photo share, delete (phone + storage; cron backstop). History screen. Export includes scans. Sign-out / delete account wipe the photo folder.
+- `DiseaseModel` interface + `UnavailableModel` (Expo Go): scans go to the cloud check. The TFLite model comes in Phase 4E (dev build).
+- Demo mode: scans get a clearly marked sample result. New strings are English only (Urdu falls back).
+- Tested in the iOS Simulator (demo mode): pick from gallery → photo prepared → quality check → saved → result + advice. 156 unit tests.
+
 ## Next
 - Run docs/TESTING-PHASE2.md and docs/TESTING-PHASE3.md on the real Supabase project, then Phase 4.

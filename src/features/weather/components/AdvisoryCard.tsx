@@ -30,7 +30,7 @@ export function AdvisoryCard({ advisory }: { advisory: Advisory }) {
   const action = advisory.action;
   const runAction = () => {
     if (!action) return;
-    if (action.kind === 'scan') router.push('/(tabs)/scan');
+    if (action.kind === 'scan') router.push({ pathname: '/(tabs)/scan', params: action.cropId ? { cropId: action.cropId } : {} });
     else router.push({ pathname: '/activity/edit', params: { farmId: action.farmId, cropId: action.cropId, type: 'irrigation' } });
   };
 

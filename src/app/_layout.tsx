@@ -34,7 +34,7 @@ function RootStack() {
     <>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: 'slide_from_right' }}>
-        <Stack.Screen name="scan/result" options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="scan/[id]" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="expert/ask" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/callback" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="auth/reset" options={{ animation: 'fade' }} />

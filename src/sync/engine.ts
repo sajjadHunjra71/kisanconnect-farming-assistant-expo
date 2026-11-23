@@ -42,7 +42,7 @@ export const PULL_OVERLAP_MS = 2 * 60_000;
 export const TOMBSTONE_HORIZON_MS = 90 * 86_400_000;
 
 /** Fields the server owns; never sent. */
-const SERVER_OWNED = ['version', 'updated_at', 'area_acres'];
+const SERVER_OWNED = ['version', 'updated_at', 'area_acres', 'ai_result', 'final_status', 'top_disease_id', 'needs_expert_ai', 'checked_at'];
 const NOT_UPDATABLE = ['id', 'user_id', 'created_at', ...SERVER_OWNED];
 
 function omit(o: Record<string, unknown>, keys: string[]) {
@@ -56,7 +56,7 @@ function parentKeys(e: OutboxEntry): string[] {
   const p = (e.payload ?? {}) as Record<string, unknown>;
   const keys = [`${e.tbl}:${e.row_id}`];
   if (e.tbl !== 'farms' && p.farm_id) keys.push(`farms:${String(p.farm_id)}`);
-  if (e.tbl === 'activities' && p.crop_id) keys.push(`crops:${String(p.crop_id)}`);
+  if ((e.tbl === 'activities' || e.tbl === 'scans') && p.crop_id) keys.push(`crops:${String(p.crop_id)}`);
   return keys;
 }
 

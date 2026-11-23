@@ -183,7 +183,7 @@ export function buildAdvisories(input: {
       title: tr(`advice.disease.${h.ruleId}.title`),
       body: tr(`advice.disease.${h.ruleId}.body`),
       source: 'Disease-weather rules (indicative)',
-      action: { kind: 'scan' },
+      action: { kind: 'scan', cropId: h.cropId },
     });
   }
 

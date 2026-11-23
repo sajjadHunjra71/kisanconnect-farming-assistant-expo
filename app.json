@@ -56,6 +56,14 @@
         {
           "color": "#1F5C3F"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "KisanConnect uses your photos to check a crop leaf for disease.",
+          "cameraPermission": "KisanConnect uses the camera to photograph a crop leaf and check it for disease.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

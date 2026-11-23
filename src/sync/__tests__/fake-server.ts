@@ -6,7 +6,7 @@ type Fault = { method: keyof SyncTransport; error: unknown; afterApply?: boolean
 
 /** In-memory stand-in for Supabase that follows the migration's trigger rules. */
 export function createFakeServer(userId: string, start = Date.parse('2026-11-20T08:00:00Z')) {
-  const tables: Record<SyncTable, Map<string, ServerRow>> = { farms: new Map(), crops: new Map(), activities: new Map() };
+  const tables: Record<SyncTable, Map<string, ServerRow>> = { farms: new Map(), crops: new Map(), activities: new Map(), scans: new Map() };
   let clock = start;
   const tick = () => new Date((clock += 1000)).toISOString();
   const faults: Fault[] = [];

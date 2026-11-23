@@ -56,7 +56,7 @@ export type DailyForecast = { day: Localized; minC: number; maxC: number; condit
 
 export type AdvisoryKind = 'spray' | 'irrigation' | 'disease-risk' | 'heat' | 'frost' | 'rain' | 'wind' | 'fog';
 
-export type AdvisoryAction = { kind: 'scan' } | { kind: 'log-irrigation'; farmId: string; cropId: string };
+export type AdvisoryAction = { kind: 'scan'; cropId?: string } | { kind: 'log-irrigation'; farmId: string; cropId: string };
 export type Severity = 'good' | 'info' | 'warning' | 'danger';
 
 export type Advisory = {

@@ -27,7 +27,7 @@ describe('buildExport', () => {
       now: new Date('2026-11-20T10:00:00Z'),
     });
 
-    expect(Object.keys(out)).toEqual(['exportedAt', 'profile', 'farms', 'crops', 'activities']);
+    expect(Object.keys(out)).toEqual(['exportedAt', 'profile', 'farms', 'crops', 'activities', 'scans']);
     expect(out.exportedAt).toBe('2026-11-20T10:00:00.000Z');
     expect(out.farms.map((f) => f.name)).toEqual(['Home']);
     expect(out.farms[0]).toMatchObject({ area_value: 16, area_unit: 'kanal', area_acres: 2 });

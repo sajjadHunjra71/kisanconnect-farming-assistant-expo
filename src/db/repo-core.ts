@@ -18,9 +18,12 @@ import type {
   FarmsRepo,
   ListOptions,
   Repo,
+  ScanInput,
+  ScanRecord,
+  ScansRepo,
   SyncTable,
 } from './types';
-import { ValidationError, cropAcres, farmAcres, validateActivity, validateCrop, validateFarm } from './validate';
+import { ValidationError, cropAcres, farmAcres, validateActivity, validateCrop, validateFarm, validateScan } from './validate';
 
 export class NotFoundError extends Error {
   constructor(table: string, id: string) {
@@ -224,6 +227,24 @@ export function createRepos(store: Store, ctx: RepoContext) {
     ctx,
   );
 
+  const scansRepo = createRepo<ScanRecord, ScanInput>(
+    store,
+    {
+      table: 'scans',
+      build: (input) => ({ ...validateScan(input) }),
+      fixed: ['crop_key'],
+      checkParents: async (tx, f, userId) => {
+        if (f.farm_id) await liveParent(tx, 'farms', String(f.farm_id), userId, 'farm_id');
+        if (f.crop_id) {
+          const crop = await liveParent(tx, 'crops', String(f.crop_id), userId, 'crop_id');
+          if (crop.farm_id !== f.farm_id) throw new ValidationError('crop_id', 'is on another farm');
+        }
+      },
+      children: [],
+    },
+    ctx,
+  );
+
   /**
    * Log an activity; for a harvest with `markCropHarvested`, also set the crop to
    * harvested on the activity date — both in ONE transaction (all or nothing).
@@ -243,6 +264,7 @@ export function createRepos(store: Store, ctx: RepoContext) {
     farmsRepo: farmsRepo as FarmsRepo,
     cropsRepo: cropsRepo as CropsRepo,
     activitiesRepo: activitiesRepo as ActivitiesRepo,
+    scansRepo: scansRepo as ScansRepo,
     logActivity,
   };
 }

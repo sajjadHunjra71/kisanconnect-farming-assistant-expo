@@ -1,9 +1,10 @@
 import type { AreaUnit, CropId, QuantityUnit } from '@/engine';
 
 import type { AlertsLocal } from './alerts-local';
+import type { ScanQueue } from './scan-queue';
 import type { Store } from './store';
 
-export const SYNC_TABLES = ['farms', 'crops', 'activities'] as const;
+export const SYNC_TABLES = ['farms', 'crops', 'activities', 'scans'] as const;
 export type SyncTable = (typeof SYNC_TABLES)[number];
 
 /** Columns every synced row has (mirrors Supabase). */
@@ -68,6 +69,31 @@ export type ActivityFields = {
 };
 export type ActivityRecord = SyncColumns & ActivityFields;
 
+export const SCAN_FINAL_STATUSES = ['likely', 'possible', 'unclear', 'not_crop', 'failed'] as const;
+export type ScanFinalStatus = (typeof SCAN_FINAL_STATUSES)[number];
+
+/** Columns the phone writes. */
+export type ScanFields = {
+  farm_id: string | null;
+  crop_id: string | null;
+  crop_key: CropId;
+  photo_path: string | null;
+  quality: Record<string, unknown> | null;
+  model_result: Record<string, unknown> | null;
+  model_version: string | null;
+  ask_expert: boolean;
+};
+/** Written only by the server (ai-diagnose); pulled like any other change. */
+export type ScanServerFields = {
+  ai_result: Record<string, unknown> | null;
+  final_status: ScanFinalStatus | null;
+  top_disease_id: string | null;
+  needs_expert_ai: boolean | null;
+  checked_at: string | null;
+};
+export type ScanRecord = SyncColumns & ScanFields & Partial<ScanServerFields>;
+export const SCAN_SERVER_COLUMNS = ['ai_result', 'final_status', 'top_disease_id', 'needs_expert_ai', 'checked_at'] as const;
+
 /** What callers pass in: required fields required, nullable ones optional. */
 type Input<F> = { [K in keyof F as null extends F[K] ? never : K]: F[K] } & {
   [K in keyof F as null extends F[K] ? K : never]?: F[K];
@@ -75,6 +101,7 @@ type Input<F> = { [K in keyof F as null extends F[K] ? never : K]: F[K] } & {
 export type FarmInput = Input<FarmFields>;
 export type CropInput = Omit<Input<CropFields>, 'status'> & { status?: CropStatus };
 export type ActivityInput = Omit<Input<ActivityFields>, 'source'> & { source?: ActivitySource };
+export type ScanInput = Omit<Input<ScanFields>, 'ask_expert'> & { ask_expert?: boolean };
 
 export type ListOptions = { farmId?: string; cropId?: string; includeDeleted?: boolean };
 
@@ -90,6 +117,7 @@ export interface Repo<R, I> {
 export type FarmsRepo = Repo<FarmRecord, FarmInput>;
 export type CropsRepo = Repo<CropRecord, CropInput>;
 export type ActivitiesRepo = Repo<ActivityRecord, ActivityInput>;
+export type ScansRepo = Repo<ScanRecord, ScanInput>;
 
 export type Repos = {
   kind: 'sqlite' | 'sample';
@@ -101,6 +129,11 @@ export type Repos = {
   farmsRepo: FarmsRepo;
   cropsRepo: CropsRepo;
   activitiesRepo: ActivitiesRepo;
+  scansRepo: ScansRepo;
+  /** Local-only scan state: photo upload + cloud check queue. */
+  scanQueue: ScanQueue;
+  /** Demo mode only: fill a scan's result locally (no server). */
+  demoApplyScanResult?: (id: string, fields: ScanServerFields) => Promise<void>;
   /** Activity + (for a harvest) mark the crop harvested, in one transaction. */
   logActivity(input: ActivityInput, options?: { markCropHarvested?: boolean }): Promise<ActivityRecord>;
 };

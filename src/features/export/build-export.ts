@@ -2,7 +2,7 @@
  * "Export my data" (pure). Live rows only (soft-deleted rows are left out);
  * sync bookkeeping (version, last_op_id) is dropped.
  */
-import type { ActivityRecord, CropRecord, FarmRecord } from '@/db/types';
+import type { ActivityRecord, CropRecord, FarmRecord, ScanRecord } from '@/db/types';
 
 export type ExportProfile = {
   email: string | null;
@@ -18,6 +18,7 @@ export type DataExport = {
   farms: Record<string, unknown>[];
   crops: Record<string, unknown>[];
   activities: Record<string, unknown>[];
+  scans: Record<string, unknown>[];
 };
 
 const INTERNAL = ['version', 'last_op_id', 'deleted_at', 'user_id'];
@@ -38,6 +39,7 @@ export function buildExport(input: {
   farms: FarmRecord[];
   crops: CropRecord[];
   activities: ActivityRecord[];
+  scans?: ScanRecord[];
   now?: Date;
 }): DataExport {
   const live = new Set(input.farms.filter((f) => !f.deleted_at).map((f) => f.id));
@@ -53,6 +55,7 @@ export function buildExport(input: {
       input.activities.filter((a) => live.has(a.farm_id)),
       (a, b) => a.done_on.localeCompare(b.done_on) || a.created_at.localeCompare(b.created_at),
     ),
+    scans: clean(input.scans ?? [], (a, b) => a.created_at.localeCompare(b.created_at)),
   };
 }
 

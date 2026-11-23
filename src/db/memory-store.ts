@@ -15,7 +15,7 @@ type State = {
 export type MemoryStore = Store & { snapshot(): State };
 
 export function createMemoryStore(seed: Partial<Record<SyncTable, Row[]>> = {}): MemoryStore {
-  let state: State = { tables: { farms: {}, crops: {}, activities: {} }, outbox: [], cursors: {}, seq: 0 };
+  let state: State = { tables: { farms: {}, crops: {}, activities: {}, scans: {} }, outbox: [], cursors: {}, seq: 0 };
   for (const [table, rows] of Object.entries(seed) as [SyncTable, Row[]][]) {
     for (const r of rows) state.tables[table][r.id] = { ...r };
   }

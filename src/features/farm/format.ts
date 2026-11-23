@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 
-import { districtByName, parseLocalDate } from '@/engine';
+import { districtByName, parseLocalDate, toLocalDate } from '@/engine';
 import type { LanguageCode } from '@/i18n/languages';
 
 /** "12.5 acre" / "16 kanal" — numbers kept as entered (max 3 dp). */
@@ -23,4 +23,9 @@ export function formatDate(date: string, language: LanguageCode): string {
   } catch {
     return date;
   }
+}
+
+/** An ISO instant (e.g. created_at) as the phone's local calendar day. */
+export function localDay(iso: string): string {
+  return toLocalDate(new Date(iso));
 }

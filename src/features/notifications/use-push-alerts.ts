@@ -22,7 +22,9 @@ export function usePushAlerts() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
     const sub = Notifications.addNotificationResponseReceivedListener((r) => {
-      if ((r.notification.request.content.data as { type?: string } | undefined)?.type === 'weather') router.push('/(tabs)/weather');
+      const data = r.notification.request.content.data as { type?: string; scanId?: string } | undefined;
+      if (data?.type === 'weather') router.push('/(tabs)/weather');
+      if (data?.type === 'scan' && data.scanId) router.push({ pathname: '/scan/[id]', params: { id: data.scanId } });
     });
     return () => sub.remove();
   }, []);

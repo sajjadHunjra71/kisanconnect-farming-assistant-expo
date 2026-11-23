@@ -111,3 +111,21 @@ describe('logActivity', () => {
     expect((await cropsRepo.get(crop.id))?.status).toBe('active');
   });
 });
+
+describe('scans', () => {
+  it('scan links to own farm/crop; crop must be on the farm; server columns never pushed', async () => {
+    const { store, farmsRepo, cropsRepo, scansRepo } = setup();
+    const f1 = await farmsRepo.create(farmInput);
+    const f2 = await farmsRepo.create({ ...farmInput, name: 'Two' });
+    const crop = await cropsRepo.create({ farm_id: f1.id, crop_key: 'wheat', sowing_date: '2026-11-01' });
+    const scan = await scansRepo.create({ farm_id: f1.id, crop_id: crop.id, crop_key: 'wheat', quality: { blurVariance: 120 } });
+    expect(scan).toMatchObject({ farm_id: f1.id, crop_id: crop.id, ask_expert: false, photo_path: null });
+    await expect(scansRepo.create({ farm_id: f2.id, crop_id: crop.id, crop_key: 'wheat' })).rejects.toThrow('another farm');
+    await expect(scansRepo.create({ farm_id: null, crop_id: crop.id, crop_key: 'wheat' })).rejects.toThrow('needs a farm');
+    await expect(scansRepo.create({ crop_key: 'wheat', photo_path: '../etc/passwd' })).rejects.toThrow('photo_path');
+    const updated = await scansRepo.update(scan.id, { ask_expert: true, crop_key: 'rice' });
+    expect(updated).toMatchObject({ ask_expert: true, crop_key: 'wheat' }); // crop_key fixed after creation
+    const entry = store.snapshot().outbox.find((o) => o.row_id === scan.id)!;
+    expect(entry.payload).not.toHaveProperty('final_status');
+  });
+});

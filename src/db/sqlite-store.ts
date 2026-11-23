@@ -1,7 +1,7 @@
 import type { SQLiteBindValue, SQLiteDatabase } from 'expo-sqlite';
 
 import type { OutboxKind, OutboxOp } from './outbox-coalesce';
-import { MIGRATIONS, SCHEMA_VERSION, TABLE_COLUMNS } from './schema';
+import { BOOL_COLUMNS, JSON_COLUMNS, MIGRATIONS, SCHEMA_VERSION, TABLE_COLUMNS } from './schema';
 import type { OutboxEntry, Row, Store, SyncCursor, TxStore } from './store';
 
 
@@ -19,19 +19,44 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
 
 const bind = (v: unknown): SQLiteBindValue => (v === undefined ? null : (v as SQLiteBindValue));
 
+/** App value → SQLite value (objects as JSON text, booleans as 0/1). */
+function toDb(column: string, v: unknown): SQLiteBindValue {
+  if (v == null) return null;
+  if (JSON_COLUMNS.has(column)) return typeof v === 'string' ? v : JSON.stringify(v);
+  if (BOOL_COLUMNS.has(column)) return v ? 1 : 0;
+  return bind(v);
+}
+
+/** SQLite row → app row. */
+function fromDb<T extends Record<string, unknown> | null>(row: T): T {
+  if (!row) return row;
+  const out: Record<string, unknown> = { ...row };
+  for (const c of JSON_COLUMNS) {
+    if (typeof out[c] === 'string') {
+      try {
+        out[c] = JSON.parse(out[c] as string);
+      } catch {
+        out[c] = null;
+      }
+    }
+  }
+  for (const c of BOOL_COLUMNS) if (c in out && out[c] !== null) out[c] = out[c] === 1 || out[c] === true;
+  return out as T;
+}
+
 function txStore(db: SQLiteDatabase): TxStore {
   return {
-    getRow: (table, id) => db.getFirstAsync<Row>(`select * from ${table} where id = ?`, [id]),
+    getRow: async (table, id) => fromDb(await db.getFirstAsync<Row>(`select * from ${table} where id = ?`, [id])),
 
     putRow: async (table, row) => {
       const cols = TABLE_COLUMNS[table];
       await db.runAsync(
         `insert or replace into ${table} (${cols.join(', ')}) values (${cols.map(() => '?').join(', ')})`,
-        cols.map((c) => bind(row[c])),
+        cols.map((c) => toDb(c, row[c])),
       );
     },
 
-    listRows: (table, f) => {
+    listRows: async (table, f) => {
       const where = ['user_id = ?'];
       const params: SQLiteBindValue[] = [f.user_id];
       if (f.farm_id !== undefined) {
@@ -42,7 +67,7 @@ function txStore(db: SQLiteDatabase): TxStore {
         where.push('crop_id = ?');
         params.push(f.crop_id);
       }
-      return db.getAllAsync<Row>(`select * from ${table} where ${where.join(' and ')}`, params);
+      return (await db.getAllAsync<Row>(`select * from ${table} where ${where.join(' and ')}`, params)).map(fromDb);
     },
 
     getPendingOp: async (table, rowId) => {

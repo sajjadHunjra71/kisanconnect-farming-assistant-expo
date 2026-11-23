@@ -8,6 +8,8 @@ import { Card, Divider, FormError, ListRow, Screen, ScreenHeader, SectionHeader,
 import { deleteAccount, signOut } from '@/features/auth/auth-service';
 import { ExportUnavailableError, exportMyData } from '@/features/export/export-data';
 import { useRepos } from '@/features/farm/hooks';
+import { hasAiConsent } from '@/features/scan/scan-service';
+import { supabase } from '@/lib/supabase';
 import { sampleUser } from '@/mocks/sample-data';
 import { useAuthAction } from '@/features/auth/use-auth-action';
 import { LanguagePicker } from '@/features/settings/components';
@@ -29,6 +31,25 @@ export default function SettingsScreen() {
   const profile = useAuthStore((s) => s.profile);
   const language = useSettingsStore((s) => s.language);
   const defaultUnits = useSettingsStore((s) => s.units);
+
+  const withdrawAi = () =>
+    Alert.alert(t('scan.consent.withdrawTitle'), t('scan.consent.withdrawBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('scan.consent.withdraw'),
+        style: 'destructive',
+        onPress: async () => {
+          const uid = useAuthStore.getState().session?.user.id;
+          if (!supabase || !uid) return;
+          const { error: e } = await supabase.from('profiles').update({ ai_consent_at: null, ai_consent_version: null }).eq('id', uid);
+          if (e) Alert.alert(t('scan.consent.needOnline'));
+          else {
+            await useAuthStore.getState().loadProfile();
+            Alert.alert(t('scan.consent.withdrawn'));
+          }
+        },
+      },
+    ]);
 
   const doExport = async () => {
     if (!repos) return;
@@ -166,7 +187,13 @@ export default function SettingsScreen() {
           <Divider inset={52} />
           <ListRow icon="shield-lock-outline" title={t('settings.privacy')} onPress={() => undefined} />
           <Divider inset={52} />
-          <ListRow icon="information-outline" title={t('settings.about')} onPress={() => undefined} />
+          <ListRow icon="information-outline" title={t('settings.about')} subtitle={t('settings.dataSources')} onPress={() => router.push('/about')} />
+          {signedIn && hasAiConsent(profile) ? (
+            <>
+              <Divider inset={52} />
+              <ListRow icon="robot-off-outline" title={t('scan.consent.withdraw')} subtitle={t('settings.aiConsentOn')} onPress={withdrawAi} chevron={false} />
+            </>
+          ) : null}
           <Divider inset={52} />
           <ListRow
             icon="replay"

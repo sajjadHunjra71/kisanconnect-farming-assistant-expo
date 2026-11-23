@@ -4,6 +4,7 @@ import { sampleFarm } from '@/mocks/sample-data';
 
 import { createMemoryAlerts, type AlertRecord } from './alerts-local';
 import { createMemoryStore } from './memory-store';
+import { createMemoryScanQueue } from './scan-queue';
 import { createRepos } from './repo-core';
 import type { Row } from './store';
 import type { Repos } from './types';
@@ -65,5 +66,17 @@ function sampleAlerts(): AlertRecord[] {
 
 export function createSampleRepos(): Repos {
   const store = createMemoryStore(seed());
-  return { kind: 'sample', alertsLocal: createMemoryAlerts(sampleAlerts()), ...createRepos(store, { userId: DEMO_USER_ID, newId: demoId, emitWrites: true }) };
+  return {
+    kind: 'sample',
+    alertsLocal: createMemoryAlerts(sampleAlerts()),
+    scanQueue: createMemoryScanQueue(),
+    // Demo has no server: the sample "cloud" result is written straight into the row.
+    demoApplyScanResult: async (id, fields) => {
+      await store.transaction(async (tx) => {
+        const row = await tx.getRow('scans', id);
+        if (row) await tx.putRow('scans', { ...row, ...fields, version: Number(row.version ?? 0) + 1 });
+      });
+    },
+    ...createRepos(store, { userId: DEMO_USER_ID, newId: demoId, emitWrites: true }),
+  };
 }
