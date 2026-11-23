@@ -115,5 +115,10 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - Demo mode: scans get a clearly marked sample result. New strings are English only (Urdu falls back).
 - Tested in the iOS Simulator (demo mode): pick from gallery → photo prepared → quality check → saved → result + advice. 156 unit tests.
 
+## Phase 4D: Training notebook (24 Nov 2026, not run yet)
+- `ml/train.ipynb` (built by `ml/build_notebook.py`, which embeds `ml/datasets.json`): runs on Kaggle or Colab free GPU; downloads the CC BY datasets from Mendeley at run time (re-checks each licence, skips + reports failures), maps folders to classes, cleans + perceptual-hash de-dupes across sources, builds "unclear" (blurred / dark / cropped copies + Open Images non-leaf photos), splits by source where a class has ≥ 2 sources (else by folder, flagged), warns if the source can be guessed from the image, trains MobileNetV3-Small with sun/blur/angle/partial-leaf augmentation, tunes the confidence threshold on validation with crop masking, reports on test, exports INT8 TFLite + ONNX + `labels.json` + `REPORT.md` as one zip.
+- `ml/HOW-TO-TRAIN.md`: click-by-click Kaggle (and Colab) steps.
+- Phase 4E (TFLite in a development build) is not started: it needs an EAS build.
+
 ## Next
-- Run docs/TESTING-PHASE2.md and docs/TESTING-PHASE3.md on the real Supabase project, then Phase 4.
+- Deploy + test Phases 2–4 on the real Supabase project; run ml/train.ipynb on Kaggle; then Phase 4E (on-device model in a dev build).
