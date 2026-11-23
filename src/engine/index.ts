@@ -7,3 +7,7 @@ export * from './crop-water';
 export * from './weather-rules';
 export * from './met-norway';
 export * from './alert-prefs';
+export * from './disease-kb';
+export * from './dose-filter';
+export * from './leaf-quality';
+export * from './scan-diagnosis';

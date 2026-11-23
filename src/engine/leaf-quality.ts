@@ -1,0 +1,91 @@
+/**
+ * Photo quality check on a small decoded image (pure; e.g. 224×224 RGBA from jpeg-js).
+ *
+ *   blur      – variance of the Laplacian of the grey image. Low = blurry → BLOCK.
+ *   darkness  – mean brightness. Too low → BLOCK.
+ *   leaf tone – share of pixels with a leaf-like hue (green, yellow, brown). Low → WARNING only.
+ *
+ * A block can be overridden once by the user ("Use anyway"). Thresholds are first
+ * guesses, to be tuned with real phone photos.
+ */
+
+export const QUALITY_RULES = {
+  minBlurVariance: 60,
+  minBrightness: 45,
+  minLeafRatio: 0.2,
+} as const;
+
+export type QualityIssue = 'blurry' | 'dark' | 'no-leaf';
+
+export type QualityResult = {
+  blurVariance: number;
+  brightness: number;
+  leafRatio: number;
+  /** Issues that stop the scan unless the user overrides once. */
+  blocks: QualityIssue[];
+  /** Issues shown as a warning only. */
+  warnings: QualityIssue[];
+};
+
+/** RGBA bytes (width × height × 4) → quality numbers and verdict. */
+export function checkLeafPhoto(rgba: Uint8Array, width: number, height: number): QualityResult {
+  const n = width * height;
+  if (rgba.length < n * 4 || n === 0) throw new Error('quality: bad image buffer');
+
+  const grey = new Float32Array(n);
+  let sum = 0;
+  let leaf = 0;
+  for (let i = 0; i < n; i++) {
+    const r = rgba[i * 4];
+    const g = rgba[i * 4 + 1];
+    const b = rgba[i * 4 + 2];
+    const y = 0.299 * r + 0.587 * g + 0.114 * b;
+    grey[i] = y;
+    sum += y;
+    if (isLeafTone(r, g, b)) leaf++;
+  }
+
+  // Laplacian (4-neighbour) variance over the inner pixels.
+  let lSum = 0;
+  let lSq = 0;
+  let count = 0;
+  for (let yy = 1; yy < height - 1; yy++) {
+    for (let xx = 1; xx < width - 1; xx++) {
+      const i = yy * width + xx;
+      const lap = grey[i - width] + grey[i + width] + grey[i - 1] + grey[i + 1] - 4 * grey[i];
+      lSum += lap;
+      lSq += lap * lap;
+      count++;
+    }
+  }
+  const mean = count ? lSum / count : 0;
+  const blurVariance = count ? lSq / count - mean * mean : 0;
+  const brightness = sum / n;
+  const leafRatio = leaf / n;
+
+  const blocks: QualityIssue[] = [];
+  if (brightness < QUALITY_RULES.minBrightness) blocks.push('dark');
+  else if (blurVariance < QUALITY_RULES.minBlurVariance) blocks.push('blurry');
+  const warnings: QualityIssue[] = leafRatio < QUALITY_RULES.minLeafRatio ? ['no-leaf'] : [];
+
+  const round = (v: number, dp = 1) => Math.round(v * 10 ** dp) / 10 ** dp;
+  return { blurVariance: round(blurVariance), brightness: round(brightness), leafRatio: round(leafRatio, 3), blocks, warnings };
+}
+
+/** Green, yellow or brown, with some colour and not too dark. */
+function isLeafTone(r: number, g: number, b: number): boolean {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const v = max / 255;
+  const s = max === 0 ? 0 : (max - min) / max;
+  if (v < 0.12 || s < 0.15) return false;
+  let h: number;
+  const d = max - min;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h *= 60;
+  if (h < 0) h += 360;
+  // brown/orange (15–45), yellow (45–70), green (70–170)
+  return h >= 15 && h <= 170;
+}

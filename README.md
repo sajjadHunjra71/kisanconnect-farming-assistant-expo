@@ -41,6 +41,12 @@ Google sign-in uses Supabase's browser flow (`expo-web-browser`), so login works
 | 8 | Expert connection | Planned |
 | 9 | Hardening & release | Planned |
 
+## Crop disease scan (Phase 4, in progress)
+
+- Classes for the on-device model: wheat (yellow rust, brown rust, septoria, healthy), rice (blast, brown spot, bacterial leaf blight, healthy), cotton (leaf curl virus, bacterial blight, leaf spot, healthy) + a shared "unclear" class. Stem rust, sugarcane and maize use the cloud check only.
+- Treatment advice comes only from the knowledge base (`src/engine/disease-kb.ts`); chemical control is quoted from Punjab Agriculture Department / PARC / university advisories with source and date, or left empty ("ask an expert"). The AI never gives doses (`src/engine/dose-filter.ts`).
+- **Data sources:** training images from openly licensed (CC BY 4.0) Mendeley Data datasets from Pakistan, India, Bangladesh and Ethiopia, plus Open Images (CC BY 2.0) for "unclear". Full list with links and licences: [`ml/DATASETS.md`](ml/DATASETS.md).
+
 ## Weather intelligence
 
 - **Forecast:** Open-Meteo (14 days ahead, 30 days back), with MET Norway as a fallback, through the `weather-proxy` Edge Function. Farms are snapped to a ~11 km grid cell; one cached forecast per cell, provider and schema version is shared for 15 minutes ("now" uses Open-Meteo's 15-minute current conditions), and only the cell centre is sent to the provider. Each user can trigger a limited number of fresh fetches per hour. The phone keeps the last forecast per user and farm so it still shows offline, and refreshes it when the Weather or Home screen opens or the app comes back to the front if it is older than 15 minutes; after 24 h it says "Old forecast" and hides advice. Days 8–14 are shown as "Outlook (less certain)". Screens credit "Weather data by Open-Meteo.com" / "MET Norway" (CC BY 4.0).

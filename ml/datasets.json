@@ -1,0 +1,106 @@
+{
+  "_comment": "Read by train.ipynb. Licence checked through the Mendeley Data public API on 2026-11-23. Folder names inside archives are matched to our class ids with case-insensitive regexes; anything unmatched is skipped and listed in REPORT.md.",
+  "checked_on": "2026-11-23",
+  "datasets": [
+    {
+      "key": "wheat-ethiopia-holeta",
+      "title": "Wheat Leaf Dataset",
+      "mendeley_id": "wgd66f8n6h",
+      "url": "https://data.mendeley.com/datasets/wgd66f8n6h/1",
+      "licence": "CC BY 4.0",
+      "country": "Ethiopia (Holeta, real field)",
+      "images": 407,
+      "classes": { "wheat-yellow-rust": "stripe|yellow", "wheat-septoria": "septoria", "wheat-healthy": "healthy" }
+    },
+    {
+      "key": "wheat-india-iari-leafrust",
+      "title": "Wheat nitrogen deficiency and leaf rust image dataset",
+      "mendeley_id": "th422bg4yd",
+      "url": "https://data.mendeley.com/datasets/th422bg4yd/1",
+      "licence": "CC BY 4.0",
+      "country": "India (IARI field, 2019-20)",
+      "images": 859,
+      "only_files": ["WheatLeafRust.zip"],
+      "classes": { "wheat-brown-rust": "rust|diseas|infect", "wheat-healthy": "control|healthy" }
+    },
+    {
+      "key": "wheat-rust-map",
+      "title": "Wheat Rust Images For Diseases Map",
+      "mendeley_id": "25g6cm8vhb",
+      "url": "https://data.mendeley.com/datasets/25g6cm8vhb/1",
+      "licence": "CC BY 4.0",
+      "country": "not stated",
+      "images": null,
+      "classes": { "wheat-yellow-rust": "yellow|stripe", "wheat-brown-rust": "brown|leaf.?rust", "wheat-healthy": "healthy" }
+    },
+    {
+      "key": "rice-india-sethy",
+      "title": "Rice Leaf Disease Image Samples (Sethy et al.)",
+      "mendeley_id": "fwcj7stb8r",
+      "url": "https://data.mendeley.com/datasets/fwcj7stb8r/2",
+      "licence": "CC BY 4.0",
+      "country": "India (Odisha)",
+      "images": 5932,
+      "classes": { "rice-bacterial-leaf-blight": "bacterial|blight", "rice-blast": "blast", "rice-brown-spot": "brown" }
+    },
+    {
+      "key": "rice-bd-sirajganj",
+      "title": "Rice Leaf Bacterial and Fungal Disease Dataset",
+      "mendeley_id": "hx6f852hw4",
+      "url": "https://data.mendeley.com/datasets/hx6f852hw4/2",
+      "licence": "CC BY 4.0",
+      "country": "Bangladesh (Sirajganj, Pabna)",
+      "images": 1701,
+      "only_files": ["Original Images.zip"],
+      "classes": { "rice-bacterial-leaf-blight": "bacterial.?leaf.?blight|blb", "rice-brown-spot": "^brown.?spot", "rice-blast": "blast", "rice-healthy": "healthy" }
+    },
+    {
+      "key": "rice-bd-riceleafbd",
+      "title": "RiceLeafBD",
+      "mendeley_id": "kx9rx8p2mz",
+      "url": "https://data.mendeley.com/datasets/kx9rx8p2mz/1",
+      "licence": "CC BY 4.0",
+      "country": "Bangladesh (Sylhet, Dhaka, real field, smartphone)",
+      "images": 1555,
+      "classes": { "rice-bacterial-leaf-blight": "bacterial|blight", "rice-brown-spot": "brown", "rice-healthy": "healthy" }
+    },
+    {
+      "key": "rice-bd-riceleafdiseasebd",
+      "title": "RiceLeafDiseaseBD",
+      "mendeley_id": "86s4jzj2m4",
+      "url": "https://data.mendeley.com/datasets/86s4jzj2m4/3",
+      "licence": "CC BY 4.0",
+      "country": "Bangladesh (Gazipur, smartphone, 2025)",
+      "images": 9769,
+      "only_files": ["RiceLeafDiseaseBD.zip"],
+      "classes": { "rice-blast": "blast", "rice-brown-spot": "brown", "rice-healthy": "healthy" }
+    },
+    {
+      "key": "cotton-pk-nawabshah",
+      "title": "Cotton Crop plant leaves Data set for Disease Classification",
+      "mendeley_id": "nmjxz73z6y",
+      "url": "https://data.mendeley.com/datasets/nmjxz73z6y/2",
+      "licence": "CC BY 4.0",
+      "country": "Pakistan (Shaheed Benazirabad / Nawabshah, Sindh)",
+      "images": null,
+      "classes": { "cotton-leaf-curl-virus": "curl|clcuv", "cotton-bacterial-blight": "bacterial|blight", "cotton-leaf-spot": "spot", "cotton-healthy": "healthy|fresh" }
+    },
+    {
+      "key": "cotton-cosev",
+      "title": "CoSEV: cotton disease dataset with severity stages",
+      "mendeley_id": "y7544ghy3y",
+      "url": "https://data.mendeley.com/datasets/y7544ghy3y/1",
+      "licence": "CC BY 4.0",
+      "country": "not stated in the summary (check paper)",
+      "images": 496,
+      "only_files": ["CoSev.zip"],
+      "classes": { "cotton-leaf-curl-virus": "curl", "cotton-bacterial-blight": "bacterial|blight", "cotton-leaf-spot": "spot|alternaria|cercospora", "cotton-healthy": "healthy" }
+    }
+  ],
+  "unclear": {
+    "_comment": "Shared 'unclear' class: blurred / cropped / dark copies of leaf images (made in the notebook) + non-leaf photos from Open Images V7 (images CC BY 2.0, labels CC BY 4.0), downloaded with FiftyOne.",
+    "open_images_classes": ["Person", "Hand", "Building", "Car", "Dog", "Food", "Paper", "Plate", "Road", "Sky"],
+    "open_images_max": 1500,
+    "licence": "CC BY 2.0 (images), CC BY 4.0 (annotations)"
+  }
+}

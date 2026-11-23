@@ -94,5 +94,12 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - "Now" uses Open-Meteo `current` (updated every 15 minutes), falling back to the hourly value; forecast schema v3 (cache keys `…:v3`).
 - App refreshes the forecast when Weather/Home comes into view or the app returns to the front, if the phone copy is older than 15 minutes. New "Next 24 hours" hourly strip on the Weather tab.
 
+## Phase 4A: Disease knowledge base and scan engine (23 Nov 2026)
+- `src/engine/disease-kb.ts`: 19 entries (wheat incl. stem rust, rice, cotton, sugarcane, maize) with names, symptoms and non-chemical cultural control. **Chemical control is null for every entry** until it is quoted from an official advisory with source URL + date; the app then shows "Ask an expert or your local agriculture office". Entries are marked `reviewed: false` until an agri expert checks them. (Kept as a TS module rather than kb.json so the same import works in the app and in Deno.)
+- `dose-filter.ts`: AI text with amounts + units, rates ("per acre"), spray/chemical/product names is replaced by "See advice below"; all AI text length-capped.
+- `leaf-quality.ts`: blur (Laplacian variance) and darkness block, leaf-tone ratio warns.
+- `scan-diagnosis.ts`: Gemini responseSchema with the crop's id enum, answer sanitizer, prompt (crop, stage, district, 7-day weather summary, on-device top-3 only), and the combine rules (likely / possible / unclear / not_crop / offline).
+- `ml/DATASETS.md` + `ml/datasets.json`: 9 Mendeley datasets, all CC BY 4.0 (checked via the Mendeley API), plus Open Images for "unclear"; class × source table and known gaps.
+
 ## Next
 - Run docs/TESTING-PHASE2.md and docs/TESTING-PHASE3.md on the real Supabase project, then Phase 4.

@@ -8,3 +8,7 @@ export * from './crop-water.ts';
 export * from './weather-rules.ts';
 export * from './met-norway.ts';
 export * from './alert-prefs.ts';
+export * from './disease-kb.ts';
+export * from './dose-filter.ts';
+export * from './leaf-quality.ts';
+export * from './scan-diagnosis.ts';
