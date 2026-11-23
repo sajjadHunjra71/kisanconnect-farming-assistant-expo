@@ -10,6 +10,7 @@ Free tier only. Nothing here contains keys.
    - `20261121000000_farms_crops_activities.sql` (Phase 2)
    - `20261122000000_weather_cache.sql` (Phase 3)
    - `20261123000000_push_alerts.sql` (Phase 3)
+   - `20261124000000_scans.sql` (Phase 4: scans, AI quota/budget/log, consent, `scan-photos` bucket)
 3. **Authentication → Providers**: Email on (with "Confirm email"), Google on (needs the Google Web client ID + secret).
 4. **Authentication → URL Configuration → Redirect URLs**: add
    - `kisanconnect://**` (dev and production builds)
@@ -21,14 +22,19 @@ Free tier only. Nothing here contains keys.
    npx supabase functions deploy delete-account --use-api
    npx supabase functions deploy weather-proxy --use-api
    npx supabase functions deploy weather-alerts --use-api
+   npx supabase functions deploy ai-diagnose --use-api
+   npx supabase functions deploy scan-cleanup --use-api
+   npx supabase secrets set GEMINI_API_KEY=<key from Google AI Studio> GEMINI_MODEL=<stable Flash or Flash-Lite model id>
    ```
+   Optional: `AI_DAILY_BUDGET` (shared Gemini calls per Pacific day, default 200; keep it below your project's free requests-per-day) and `AI_SCANS_PER_USER` (default 10).
    `config.toml` turns off the gateway JWT check for all three; each function checks the caller itself
    (`delete-account` and `weather-proxy` with `auth.getUser()`, `weather-alerts` with the cron secret).
 6. Weather alerts schedule: open `setup/schedule_weather_alerts.sql`, replace `<PROJECT_REF>`, and run it once in the SQL Editor.
    It creates a random cron secret inside Supabase Vault (`gen_random_bytes`), schedules `weather-alerts` every 3 hours
    (the secret goes in the `x-cron-secret` header and is checked by the `check_cron_secret` database function),
    and a daily clean-up of old forecasts, rate-limit rows, push tickets and alerts.
-7. Optional checks: run `tests/rls_farms.sql` and `tests/rls_weather.sql` in the SQL Editor. Each ends in `rollback`, so nothing is kept.
+7. Phase 4: run `setup/schedule_ai_cleanup.sql` once (replace `<PROJECT_REF>`): daily photo backstop + AI log clean-up.
+8. Optional checks: run `tests/rls_farms.sql`, `tests/rls_weather.sql` and `tests/rls_scans.sql` in the SQL Editor. Each ends in `rollback`, so nothing is kept.
 
 `functions/_shared/engine/` is a generated copy of the app's `src/engine` (`npm run sync-engine`; a unit test fails if it's stale).
 

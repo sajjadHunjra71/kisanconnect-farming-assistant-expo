@@ -101,5 +101,10 @@ Inspired by references on 60fps.design, rebuilt in Reanimated (UI thread, respec
 - `scan-diagnosis.ts`: Gemini responseSchema with the crop's id enum, answer sanitizer, prompt (crop, stage, district, 7-day weather summary, on-device top-3 only), and the combine rules (likely / possible / unclear / not_crop / offline).
 - `ml/DATASETS.md` + `ml/datasets.json`: 9 Mendeley datasets, all CC BY 4.0 (checked via the Mendeley API), plus Open Images for "unclear"; class × source table and known gaps.
 
+## Phase 4B: Scan backend (23 Nov 2026, code only, not deployed)
+- Migration `20261124000000_scans.sql`: `scans` (Phase 2 sync columns + triggers, composite owner FKs, photo path pinned to `<uid>/<scan_id>.jpg`, server-only AI columns kept unchanged for client writes by `protect_scan_ai_columns`), `profiles.ai_consent_at/version`, `ai_quota` + `ai_budget` (Pacific-time day) with `use_ai_quota` / `use_ai_budget` / `refund_ai_quota`, `ai_events` (90-day log), private `scan-photos` bucket (JPEG, 2 MB) with owner-folder policies.
+- `supabase/tests/rls_scans.sql`: 17 checks (AI columns, CAS, photo path, no delete, B can't read/list/upload/delete A's scans or photos, quota caps + refund) — pass on local Postgres with stubs; Phase 2/3 tests still pass.
+- `ai-diagnose` Edge Function (scan_id only, JWT + confirmed email + consent version, RLS ownership, photo checks, quota + refund, context without personal data, Gemini JSON mode + enum, Zod + sanitizer, one retry, ai_events). `scan-cleanup` (daily photo backstop + log purge). `delete-account` now removes the user's photos first. Type-checked with a Deno stub; not deployed.
+
 ## Next
 - Run docs/TESTING-PHASE2.md and docs/TESTING-PHASE3.md on the real Supabase project, then Phase 4.

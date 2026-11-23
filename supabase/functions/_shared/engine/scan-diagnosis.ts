@@ -8,6 +8,9 @@ import { UNKNOWN_ID, isHealthyId, kbEntry, kbIdsForCrop } from './disease-kb.ts'
 import { filterAiList, filterAiText } from './dose-filter.ts';
 import type { Forecast } from './weather-rules.ts';
 
+/** Bump when the consent text changes: users must agree again before the next cloud check. */
+export const AI_CONSENT_VERSION = 1;
+
 /* ───────────────────────── cloud answer ───────────────────────── */
 
 export const AI_STATUSES = ['ok', 'unclear', 'not_crop'] as const;

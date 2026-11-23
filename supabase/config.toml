@@ -12,3 +12,9 @@ verify_jwt = false
 
 [functions.weather-alerts]
 verify_jwt = false
+
+[functions.ai-diagnose]
+verify_jwt = false
+
+[functions.scan-cleanup]
+verify_jwt = false
