@@ -207,6 +207,7 @@
     "useAnyway": "Use this photo anyway",
     "checkPhoto": "Checking the photo…",
     "saving": "Saving…",
+    "saveFailed": "Couldn't save this scan on your phone. Please try again.",
     "guideTitle": "Good and bad photos",
     "guideGood": "One leaf fills the frame, sharp, daylight",
     "guideFar": "Too far away",

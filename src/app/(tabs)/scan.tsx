@@ -10,7 +10,7 @@ import { CropPicker } from '@/features/farm/components';
 import { formatDate, localDay } from '@/features/farm/format';
 import { useRepoQuery } from '@/features/farm/hooks';
 import { pickLeafPhoto, photoQuality, prepareLeafPhoto } from '@/features/scan/photo';
-import { createScan, hasAiConsent, newScanId } from '@/features/scan/scan-service';
+import { hasAiConsent, newScanId, safeCreateScan } from '@/features/scan/scan-service';
 import { useDirection } from '@/hooks/use-direction';
 import { useLocalized } from '@/hooks/use-localized';
 import { useAuthStore } from '@/store/auth-store';
@@ -48,6 +48,7 @@ export default function ScanScreen() {
   const [busy, setBusy] = useState<'photo' | 'save' | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [failed, setFailed] = useState<{ p: Pending; overridden: boolean } | null>(null);
 
   // Defaults: crop from the weather "Scan a leaf" link, else the selected farm's first active crop.
   useEffect(() => {
@@ -66,16 +67,20 @@ export default function ScanScreen() {
 
   const take = async (source: 'camera' | 'library') => {
     setMessage(null);
-    const res = await pickLeafPhoto(source);
-    if ('denied' in res) return setMessage(t('scan.permissionDenied'));
-    if ('cancelled' in res) return;
-    setBusy('photo');
+    setFailed(null);
     try {
+      const res = await pickLeafPhoto(source);
+      if ('denied' in res) return setMessage(t('scan.permissionDenied'));
+      if ('cancelled' in res) return;
+      setBusy('photo');
       const tempId = newScanId();
       const prepared = await prepareLeafPhoto(res.uri, owner, tempId);
       const quality = await photoQuality(prepared.uri);
       if (quality.blocks.length > 0 || quality.warnings.length > 0) setPending({ tempId, uri: prepared.uri, quality });
       else await save({ tempId, uri: prepared.uri, quality }, false);
+    } catch (e) {
+      console.warn('[scan] photo failed:', e instanceof Error ? e.message : e);
+      setMessage(t('scan.saveFailed'));
     } finally {
       setBusy(null);
     }
@@ -90,8 +95,10 @@ export default function ScanScreen() {
       return;
     }
     setBusy('save');
+    setMessage(null);
+    setFailed(null);
     try {
-      const scan = await createScan({
+      const res = await safeCreateScan({
         repos,
         owner,
         tempId: p.tempId,
@@ -103,8 +110,9 @@ export default function ScanScreen() {
         cloudAllowed,
       });
       setPending(null);
+      if ('error' in res) return setFailed({ p, overridden });
       void requestSync('full');
-      router.push({ pathname: '/scan/[id]', params: { id: scan.id } });
+      router.push({ pathname: '/scan/[id]', params: { id: res.scan.id } });
     } finally {
       setBusy(null);
     }
@@ -176,6 +184,14 @@ export default function ScanScreen() {
           ))}
           <Button label={t('scan.retake')} icon="camera-retake-outline" onPress={() => setPending(null)} />
           <Button label={t('scan.useAnyway')} variant="secondary" onPress={() => void save(pending, pending.quality.blocks.length > 0)} />
+        </Card>
+      ) : null}
+
+      {failed ? (
+        <Card tone="dangerSoft" style={{ gap: spacing.sm }}>
+          <Text variant="body">{t('scan.saveFailed')}</Text>
+          <Button label={t('scan.tryAgain')} icon="refresh" onPress={() => void save(failed.p, failed.overridden)} />
+          <Button label={t('scan.retake')} icon="camera-retake-outline" variant="ghost" onPress={() => setFailed(null)} />
         </Card>
       ) : null}
 

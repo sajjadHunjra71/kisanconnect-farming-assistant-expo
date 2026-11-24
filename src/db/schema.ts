@@ -132,6 +132,38 @@ export const MIGRATIONS: string[] = [
     created_at text not null
   );
   `,
+  // v4: v1's outbox / sync_state had check (tbl in ('farms','crops','activities')), so scans
+  // could never be queued or synced on phones that already had the app. Rebuild both without
+  // a table-name check (the store validates table names against TABLE_COLUMNS), keeping rows
+  // and outbox order (rowid).
+  `
+  create table outbox_v4 (
+    op_id text primary key not null,
+    tbl text not null,
+    row_id text not null,
+    kind text not null check (kind in ('create', 'update', 'delete')),
+    payload text not null,
+    base_version integer not null,
+    attempts integer not null default 0,
+    status text not null default 'pending' check (status in ('pending', 'inflight', 'failed')),
+    last_error text,
+    created_at text not null
+  );
+  insert into outbox_v4 (rowid, op_id, tbl, row_id, kind, payload, base_version, attempts, status, last_error, created_at)
+    select rowid, op_id, tbl, row_id, kind, payload, base_version, attempts, status, last_error, created_at from outbox order by rowid;
+  drop table outbox;
+  alter table outbox_v4 rename to outbox;
+  create index if not exists outbox_row_idx on outbox (tbl, row_id, status);
+
+  create table sync_state_v4 (
+    tbl text primary key not null,
+    cursor_updated_at text,
+    cursor_id text
+  );
+  insert into sync_state_v4 (tbl, cursor_updated_at, cursor_id) select tbl, cursor_updated_at, cursor_id from sync_state;
+  drop table sync_state;
+  alter table sync_state_v4 rename to sync_state;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

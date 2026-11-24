@@ -17,6 +17,11 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
   });
 }
 
+/** Table names reach SQL text, so only known tables are allowed (the schema has no table-name CHECK). */
+function assertTable(table: string): void {
+  if (!Object.prototype.hasOwnProperty.call(TABLE_COLUMNS, table)) throw new Error(`Unknown sync table: ${table}`);
+}
+
 const bind = (v: unknown): SQLiteBindValue => (v === undefined ? null : (v as SQLiteBindValue));
 
 /** App value → SQLite value (objects as JSON text, booleans as 0/1). */
@@ -82,6 +87,7 @@ function txStore(db: SQLiteDatabase): TxStore {
     applyDecision: async (table, rowId, d) => {
       switch (d.type) {
         case 'insert':
+          assertTable(table);
           await db.runAsync(
             `insert into outbox (op_id, tbl, row_id, kind, payload, base_version, created_at)
              values (?, ?, ?, ?, ?, ?, ?)`,
@@ -138,6 +144,7 @@ function txStore(db: SQLiteDatabase): TxStore {
     },
 
     setCursor: async (table, cursor) => {
+      assertTable(table);
       await db.runAsync(
         `insert into sync_state (tbl, cursor_updated_at, cursor_id) values (?, ?, ?)
          on conflict (tbl) do update set cursor_updated_at = excluded.cursor_updated_at, cursor_id = excluded.cursor_id`,

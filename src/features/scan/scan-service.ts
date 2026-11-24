@@ -88,6 +88,20 @@ export async function createScan(input: {
   return scan;
 }
 
+/**
+ * createScan for screens: never throws, so a broken local database can't leave a spinner
+ * running forever. The photo stays at its temp path, so the same input can be retried.
+ */
+export async function safeCreateScan(input: Parameters<typeof createScan>[0]): Promise<{ scan: ScanRecord } | { error: string }> {
+  try {
+    return { scan: await createScan(input) };
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    console.warn('[scan] save failed:', error);
+    return { error };
+  }
+}
+
 /** Soft-delete a scan and remove its photo (phone + storage when possible). */
 export async function deleteScan(repos: Repos, owner: string, scan: ScanRecord, supabase: SupabaseClient | null) {
   await repos.scansRepo.remove(scan.id);

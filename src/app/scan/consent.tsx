@@ -7,7 +7,7 @@ import { Button, Card, FormError, ListRow, Screen, ScreenHeader, Text, Toggle } 
 import { AI_CONSENT_VERSION, isCropId, type CropId } from '@/engine';
 import { useRepos } from '@/features/farm/hooks';
 import { localScanPhoto } from '@/features/scan/photo';
-import { createScan } from '@/features/scan/scan-service';
+import { safeCreateScan } from '@/features/scan/scan-service';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
 import { requestSync } from '@/sync/sync-manager';
@@ -29,7 +29,7 @@ export default function ScanConsentScreen() {
     if (!repos || !userId || !p.tempId) return router.back();
     const cropKey: CropId = p.cropKey && isCropId(p.cropKey) ? p.cropKey : 'wheat';
     const photo = localScanPhoto(userId, p.tempId);
-    const scan = await createScan({
+    const res = await safeCreateScan({
       repos,
       owner: userId,
       tempId: p.tempId,
@@ -41,21 +41,31 @@ export default function ScanConsentScreen() {
       quality: parseQuality(p.quality),
       cloudAllowed,
     });
+    if ('error' in res) {
+      setBusy(false);
+      setError(t('scan.saveFailed'));
+      return;
+    }
     void requestSync('full');
-    router.replace({ pathname: '/scan/[id]', params: { id: scan.id } });
+    router.replace({ pathname: '/scan/[id]', params: { id: res.scan.id } });
   };
 
   const agree = async () => {
     if (!supabase || !userId) return;
     setBusy(true);
     setError(null);
-    const { error: e } = await supabase.from('profiles').update({ ai_consent_at: new Date().toISOString(), ai_consent_version: AI_CONSENT_VERSION }).eq('id', userId);
-    if (e) {
+    try {
+      const { error: e } = await supabase.from('profiles').update({ ai_consent_at: new Date().toISOString(), ai_consent_version: AI_CONSENT_VERSION }).eq('id', userId);
+      if (e) {
+        setBusy(false);
+        return setError(t('scan.consent.needOnline'));
+      }
+      await loadProfile();
+      await finish(true);
+    } catch {
       setBusy(false);
-      return setError(t('scan.consent.needOnline'));
+      setError(t('scan.consent.needOnline'));
     }
-    await loadProfile();
-    await finish(true);
   };
 
   return (
@@ -73,7 +83,12 @@ export default function ScanConsentScreen() {
       <FormError message={error} />
       <View style={{ gap: spacing.sm }}>
         <Button label={t('scan.consent.agree')} icon="check" onPress={() => void agree()} disabled={!adult || busy} loading={busy} />
-        <Button label={t('scan.consent.notNow')} variant="ghost" onPress={() => void finish(false)} disabled={busy} />
+        <Button label={t('scan.consent.notNow')} variant="ghost" onPress={() => {
+            setBusy(true);
+            setError(null);
+            void finish(false);
+          }}
+          disabled={busy} />
       </View>
     </Screen>
   );

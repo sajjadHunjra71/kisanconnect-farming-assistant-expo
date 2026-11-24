@@ -12,7 +12,7 @@ jest.mock('../photo', () => ({
 import { createMemoryScanQueue } from '@/db/scan-queue';
 import type { Repos, ScanRecord } from '@/db/types';
 
-import { runScanQueue } from '../scan-service';
+import { runScanQueue, safeCreateScan } from '../scan-service';
 
 const U = '11111111-1111-4111-8111-111111111111';
 const S1 = '22222222-2222-4222-8222-222222222222';
@@ -103,5 +103,35 @@ describe('scan queue', () => {
     const { deps, queue } = setup([{ id: S1 }], () => ({ error: { context: { status: 503 } } }));
     await runScanQueue(deps);
     expect(await queue.get(S1)).toMatchObject({ attempts: 0, check_state: 'waiting_check' });
+  });
+});
+
+describe('safeCreateScan', () => {
+  it('returns an error instead of throwing when the local save fails (screen shows Try again)', async () => {
+    const queue = createMemoryScanQueue([]);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const repos = {
+      kind: 'local',
+      scanQueue: queue,
+      scansRepo: {
+        create: async () => {
+          throw new Error("Error code 19: CHECK constraint failed: tbl in ('farms', 'crops', 'activities')");
+        },
+      },
+    } as unknown as Repos;
+    const res = await safeCreateScan({
+      repos,
+      owner: U,
+      tempId: 'temp',
+      photoUri: 'file:///scans/temp.jpg',
+      farmId: null,
+      cropId: null,
+      cropKey: 'wheat',
+      quality: { blurVariance: 0, brightness: 0, leafRatio: 0, blocks: [], warnings: [] },
+      cloudAllowed: true,
+    });
+    expect(res).toEqual({ error: expect.stringContaining('CHECK constraint failed') });
+    expect(await queue.list()).toEqual([]);
+    warn.mockRestore();
   });
 });
