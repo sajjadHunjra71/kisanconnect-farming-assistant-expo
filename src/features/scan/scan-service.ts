@@ -143,7 +143,9 @@ export async function runScanQueue(d: QueueDeps): Promise<number> {
       await d.repos.scanQueue.remove(state.scan_id);
       continue;
     }
-    if (row.checked_at) {
+    // "Try again" on a failed check puts it back to waiting_check: run it once more.
+    const recheck = row.final_status === 'failed' && state.check_state === 'waiting_check';
+    if (row.checked_at && !recheck) {
       await d.repos.scanQueue.update(row.id, { check_state: 'checked' });
       await notifyReady(d.repos, row.id);
       continue;
@@ -165,10 +167,12 @@ export async function runScanQueue(d: QueueDeps): Promise<number> {
       await d.push();
     }
 
-    const res = await d.supabase.functions.invoke<{ status?: string; reason?: string }>('ai-diagnose', { body: { scan_id: row.id } });
+    const res = await d.supabase.functions.invoke<{ status?: string; reason?: string; detail?: string }>('ai-diagnose', { body: { scan_id: row.id } });
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.log('[scan] ai-diagnose', row.id, JSON.stringify(res.data ?? null), res.error ? await errorBody(res.error) : '');
     if (!res.error) {
       if (res.data?.status === 'waiting') {
-        await d.repos.scanQueue.update(row.id, { check_state: 'waiting_check', last_error: res.data.reason ?? null });
+        const why = [res.data.reason, res.data.detail].filter(Boolean).join(' ');
+        await d.repos.scanQueue.update(row.id, { check_state: 'waiting_check', last_error: why || null });
         break; // no quota / Gemini busy: stop for now
       }
       await d.pull();
@@ -195,6 +199,16 @@ export async function runScanQueue(d: QueueDeps): Promise<number> {
     });
   }
   return checked;
+}
+
+/** The function's JSON error body (for dev logs). */
+async function errorBody(error: unknown): Promise<string> {
+  const ctx = (error as { context?: { status?: number; text?: () => Promise<string> } }).context;
+  try {
+    return `http_${ctx?.status} ${(await ctx?.text?.()) ?? ''}`.slice(0, 300);
+  } catch {
+    return `http_${ctx?.status}`;
+  }
 }
 
 async function notifyReady(repos: Repos, scanId: string) {

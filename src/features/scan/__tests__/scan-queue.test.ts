@@ -135,3 +135,25 @@ describe('safeCreateScan', () => {
     warn.mockRestore();
   });
 });
+
+describe('Try again on a failed check', () => {
+  it('runs ai-diagnose again for a failed scan put back to waiting_check, and keeps a 202 reason', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const { deps, calls, queue } = setup([{ id: S1, checked_at: 'earlier', final_status: 'failed', photo_path: `${U}/${S1}.jpg` }], () => ({
+      data: { status: 'waiting', reason: 'ai_unavailable', detail: 'http_403:PERMISSION_DENIED' },
+    }));
+    await queue.update(S1, { uploaded: true, check_state: 'waiting_check' });
+    expect(await runScanQueue(deps)).toBe(0);
+    expect(calls).toEqual([`diagnose:${S1}`]);
+    expect(await queue.get(S1)).toMatchObject({ check_state: 'waiting_check', last_error: 'ai_unavailable http_403:PERMISSION_DENIED' });
+    log.mockRestore();
+  });
+
+  it('does not re-run a good result', async () => {
+    const { deps, calls, queue } = setup([{ id: S1, checked_at: 'earlier', final_status: 'likely' }], () => ({ data: { status: 'checked' } }));
+    await queue.update(S1, { uploaded: true, check_state: 'waiting_check' });
+    await runScanQueue(deps);
+    expect(calls).toEqual([]);
+    expect((await queue.get(S1))?.check_state).toBe('checked');
+  });
+});

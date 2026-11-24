@@ -28,6 +28,7 @@ import {
   DEFAULT_MODEL_THRESHOLD,
   DIAGNOSIS_SYSTEM,
   buildDiagnosisPrompt,
+  classifyGeminiError,
   combineResults,
   diagnosisResponseSchema,
   sanitizeDiagnosis,
@@ -67,6 +68,7 @@ type ScanRow = {
   photo_path: string | null;
   model_result: { top?: ModelTop; threshold?: number } | null;
   checked_at: string | null;
+  final_status: string | null;
   deleted_at: string | null;
 };
 
@@ -98,11 +100,12 @@ Deno.serve(async (req) => {
   // The scan, through RLS: if it isn't the caller's, it simply isn't found.
   const { data: scan } = await userClient
     .from('scans')
-    .select('id, user_id, farm_id, crop_id, crop_key, photo_path, model_result, checked_at, deleted_at')
+    .select('id, user_id, farm_id, crop_id, crop_key, photo_path, model_result, checked_at, final_status, deleted_at')
     .eq('id', scanId)
     .maybeSingle<ScanRow>();
   if (!scan || scan.deleted_at) return json({ error: 'not_found' }, 404);
-  if (scan.checked_at) return json({ status: 'checked', already: true }, 200);
+  // A finished check is final, except a failed one: "Try again" may run it once more (quota applies).
+  if (scan.checked_at && scan.final_status !== 'failed') return json({ status: 'checked', already: true }, 200);
   const expectedPath = `${user.id}/${scan.id}.jpg`;
   if (scan.photo_path !== expectedPath) return json({ error: 'photo_missing' }, 409);
 
@@ -134,6 +137,7 @@ Deno.serve(async (req) => {
   let globalUnits = 1;
   let diagnosis: AiDiagnosis | null = null;
   let meta: { modelVersion?: string; tokens?: number; requestId?: string } = {};
+  let failReason = 'invalid';
 
   for (let attempt = 0; attempt < 2 && !diagnosis; attempt++) {
     if (attempt === 1) {
@@ -149,7 +153,15 @@ Deno.serve(async (req) => {
       await logEvent(admin, user.id, model, meta, Date.now() - started, res.kind === 'busy' ? 'rate_limited' : 'error');
       return json({ status: 'waiting', reason: res.kind === 'busy' ? 'gemini_busy' : 'gemini_unreachable' }, 202);
     }
+    if (res.kind === 'setup') {
+      // Key / API / model misconfigured on our side: not the farmer's photo. Refund, keep the
+      // scan waiting (not "failed"), and record Google's reason code for whoever fixes the setup.
+      await admin.rpc('refund_ai_quota', { p_user: user.id, p_kind: 'scan', p_global_units: globalUnits, p_user_unit: true });
+      await logEvent(admin, user.id, model, meta, Date.now() - started, `setup_error:${res.reason}`);
+      return json({ status: 'waiting', reason: 'ai_unavailable', detail: res.reason }, 202);
+    }
     if (res.kind === 'answer') diagnosis = res.diagnosis;
+    else failReason = res.reason;
   }
 
   const modelTop = scan.model_result?.top ?? null;
@@ -166,10 +178,10 @@ Deno.serve(async (req) => {
           checked_at: now,
         };
       })()
-    : { ai_result: { error: 'invalid_answer', model }, final_status: 'failed', top_disease_id: null, needs_expert_ai: true, checked_at: now };
+    : { ai_result: { error: 'invalid_answer', reason: failReason, model }, final_status: 'failed', top_disease_id: null, needs_expert_ai: true, checked_at: now };
 
   const { error: upError } = await admin.from('scans').update(update).eq('id', scan.id).eq('user_id', user.id);
-  await logEvent(admin, user.id, model, meta, Date.now() - started, diagnosis ? (globalUnits > 1 ? 'retry_ok' : 'ok') : 'invalid');
+  await logEvent(admin, user.id, model, meta, Date.now() - started, diagnosis ? (globalUnits > 1 ? 'retry_ok' : 'ok') : `invalid:${failReason}`);
   if (upError) return json({ error: 'save_failed' }, 500);
   return json({ status: 'checked', final_status: update.final_status }, 200);
 });
@@ -205,7 +217,8 @@ async function loadContext(userClient: SupabaseClient, admin: SupabaseClient, sc
 
 type GeminiResult =
   | { kind: 'answer'; diagnosis: AiDiagnosis; meta: Meta }
-  | { kind: 'invalid'; meta: Meta }
+  | { kind: 'invalid'; reason: string; meta: Meta }
+  | { kind: 'setup'; reason: string; meta: Meta }
   | { kind: 'busy'; meta: Meta }
   | { kind: 'network'; meta: Meta };
 type Meta = { modelVersion?: string; tokens?: number; requestId?: string };
@@ -241,10 +254,12 @@ async function callGemini(
   } catch {
     return { kind: 'network', meta: {} };
   }
-  if (res.status === 429 || res.status === 503) return { kind: 'busy', meta: {} };
   if (!res.ok) {
-    console.error('gemini error', res.status); // no prompt / photo in logs
-    return { kind: res.status >= 500 ? 'network' : 'invalid', meta: {} };
+    const e = classifyGeminiError(res.status, await res.json().catch(() => null));
+    console.error('gemini error', e.reason); // status / reason codes only: no prompt, photo or key
+    if (e.kind === 'busy') return { kind: 'busy', meta: {} };
+    if (e.kind === 'server') return { kind: 'network', meta: {} };
+    return { kind: e.kind, reason: e.reason, meta: {} };
   }
   const out = (await res.json().catch(() => null)) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[];
@@ -254,16 +269,16 @@ async function callGemini(
   } | null;
   const meta: Meta = { modelVersion: out?.modelVersion, tokens: out?.usageMetadata?.totalTokenCount, requestId: out?.responseId };
   const text = out?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return { kind: 'invalid', meta };
+  if (!text) return { kind: 'invalid', reason: 'empty_answer', meta };
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    return { kind: 'invalid', meta };
+    return { kind: 'invalid', reason: 'not_json', meta };
   }
-  if (!AnswerShape.safeParse(parsed).success) return { kind: 'invalid', meta };
+  if (!AnswerShape.safeParse(parsed).success) return { kind: 'invalid', reason: 'bad_shape', meta };
   const diagnosis = sanitizeDiagnosis(parsed, crop);
-  return diagnosis ? { kind: 'answer', diagnosis, meta } : { kind: 'invalid', meta };
+  return diagnosis ? { kind: 'answer', diagnosis, meta } : { kind: 'invalid', reason: 'unusable_answer', meta };
 }
 
 async function logEvent(admin: SupabaseClient, userId: string, model: string, meta: Meta, latency: number, status: string) {

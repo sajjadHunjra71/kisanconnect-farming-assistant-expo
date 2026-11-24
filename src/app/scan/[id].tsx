@@ -42,6 +42,12 @@ export default function ScanResultScreen() {
   const topId = scan.top_disease_id ?? (modelTop ? combineResults(modelTop, null).topId : null);
   const top = kbEntry(topId);
   const state = data?.state?.check_state;
+  // A failed check that "Try again" sent back to the queue shows as waiting, not failed.
+  const retrying = scan.final_status === 'failed' && (state === 'waiting_check' || state === 'pending_upload');
+  // Dev builds: the code from the failing step, to debug the cloud check.
+  const devError = __DEV__
+    ? [data?.state?.last_error, (scan.ai_result as { error?: string; reason?: string } | null)?.error, (scan.ai_result as { reason?: string } | null)?.reason].filter(Boolean).join(' · ')
+    : '';
   const photo = localScanPhoto(owner, scan.id);
   const cropName = l(CROP_CALENDARS[scan.crop_key].name);
 
@@ -94,23 +100,33 @@ export default function ScanResultScreen() {
 
       {isSample && scan.checked_at ? <Badge label={t('scan.sampleResult')} tone="accent" icon="flask-outline" /> : null}
 
-      {!scan.checked_at && state ? (
+      {(!scan.checked_at || retrying) && state ? (
         <Card tone={state === 'failed' ? 'dangerSoft' : 'surfaceAlt'} style={{ gap: spacing.sm }}>
           <Text variant="title">{t(`scan.state.${state}`)}</Text>
           <Text variant="body" color="inkMuted">
             {state === 'failed' ? t('scan.failedBody') : state === 'device_only' ? t('scan.deviceOnlyBody') : t('scan.waitingBody')}
           </Text>
-          {state === 'failed' || state === 'waiting_check' ? <Button label={t('scan.tryAgain')} icon="refresh" variant="secondary" onPress={() => void retry()} loading={busy} /> : null}
+          {devError ? (
+            <Text variant="caption" color="inkSubtle">
+              {devError}
+            </Text>
+          ) : null}
+          {state === 'failed' || (state === 'waiting_check' && !retrying) ? <Button label={t('scan.tryAgain')} icon="refresh" variant="secondary" onPress={() => void retry()} loading={busy} /> : null}
         </Card>
       ) : null}
 
-      {shown ? (
+      {shown && !retrying ? (
         <Card elevated style={{ gap: spacing.sm }}>
           <Badge label={t(`scan.status.${shown}`)} tone={TONE[shown]} />
           {shown === 'not_crop' ? (
             <Text variant="body">{t('scan.notCropBody')}</Text>
           ) : top ? (
             <Text variant="h2">{l(top.name)}</Text>
+          ) : null}
+          {shown === 'failed' && devError ? (
+            <Text variant="caption" color="inkSubtle">
+              {devError}
+            </Text>
           ) : null}
           {shown === 'failed' ? <Button label={t('scan.tryAgain')} icon="refresh" variant="secondary" onPress={() => void retry()} loading={busy} /> : null}
         </Card>

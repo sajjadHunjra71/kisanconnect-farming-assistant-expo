@@ -210,3 +210,30 @@ export function combineResults(model: ModelTop | null, ai: AiDiagnosis | null, t
   }
   return { status: 'unclear', topId: aTop.id, needsExpert: true };
 }
+
+/* ── Gemini HTTP errors ─────────────────────────────────── */
+
+/**
+ * What a non-2xx Gemini answer means for the scan:
+ *  - busy:   429 / 503 → try later, quota refunded
+ *  - setup:  bad / restricted / blocked key, API not enabled, unknown model (400 API_KEY_INVALID,
+ *            401, 403, 404) → the server is misconfigured; the scan must NOT be marked failed,
+ *            it waits until the setup is fixed
+ *  - server: other 5xx → try later
+ *  - invalid: anything else (a request Gemini rejects) → counts as a failed check
+ * `reason` is Google's error status / reason code only (never prompt or photo), for logs.
+ */
+export type GeminiErrorKind = 'busy' | 'setup' | 'server' | 'invalid';
+
+export function classifyGeminiError(httpStatus: number, body: unknown): { kind: GeminiErrorKind; reason: string } {
+  const err = (body as { error?: { status?: unknown; message?: unknown; details?: unknown } } | null)?.error;
+  const status = typeof err?.status === 'string' ? err.status : '';
+  const details = Array.isArray(err?.details) ? (err.details as { reason?: unknown }[]) : [];
+  const detail = details.map((d) => (typeof d?.reason === 'string' ? d.reason : '')).find(Boolean) ?? '';
+  const reason = [`http_${httpStatus}`, status, detail].filter(Boolean).join(':');
+  if (httpStatus === 429 || httpStatus === 503) return { kind: 'busy', reason };
+  if (httpStatus === 401 || httpStatus === 403 || httpStatus === 404) return { kind: 'setup', reason };
+  if (httpStatus === 400 && /API_KEY|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED/.test(`${status}:${detail}`)) return { kind: 'setup', reason };
+  if (httpStatus >= 500) return { kind: 'server', reason };
+  return { kind: 'invalid', reason };
+}
