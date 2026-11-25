@@ -10,7 +10,7 @@ import { fontFamilies } from '@/theme/typography';
 
 type Props = { onSend: (text: string) => void };
 
-/** Text box + hold-to-talk mic. Voice is wired to expo-speech-recognition in Phase 5. */
+/** Text box + hold-to-talk mic. Voice input is planned (expo-speech-recognition). */
 export function Composer({ onSend }: Props) {
   const { t } = useTranslation();
   const { colors, radius, spacing } = useTheme();

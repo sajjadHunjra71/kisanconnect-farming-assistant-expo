@@ -1,4 +1,4 @@
--- RLS + privilege checks for Phase 4: scans, scan photos (storage), AI quota/budget/events.
+-- RLS + privilege checks: scans, scan photos (storage), AI quota/budget/events.
 -- Run as postgres; everything is rolled back. Failed check = exception, passed = NOTICE.
 
 begin;

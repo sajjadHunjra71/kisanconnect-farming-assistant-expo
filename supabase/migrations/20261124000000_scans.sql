@@ -1,4 +1,4 @@
--- KisanConnect · Phase 4 · leaf scans, AI quota/budget/log, consent, scan photo bucket
+-- KisanConnect · leaf scans, AI quota/budget/log, consent, scan photo bucket
 --
 -- Who writes what on public.scans:
 --   phone (authenticated): the row, quality, model_result, model_version, farm/crop links,
@@ -7,7 +7,7 @@
 --                          needs_expert_ai, checked_at. A trigger keeps these columns
 --                          unchanged for client writes (silently, so a full-row sync
 --                          upsert from the phone never fails).
--- Scans use the Phase 2 sync triggers (version bump, no undelete) and are pulled by
+-- Scans use the shared sync triggers (version bump, no undelete) and are pulled by
 -- (updated_at, id); a server AI write bumps the version so the phone pulls it.
 
 -- ── scans ──────────────────────────────────────────────────

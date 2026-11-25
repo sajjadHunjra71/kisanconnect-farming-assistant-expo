@@ -2,7 +2,7 @@
  * Leaf scans on the phone.
  *
  * Create: photo prepared + quality checked → (dev build: on-device model) → scan row saved
- * locally (synced by the Phase 2 outbox) → local queue entry.
+ * locally (synced by the outbox) → local queue entry.
  *
  * Queue (runScanQueue, one scan at a time, from the sync manager when online):
  *   row on server → upload photo to scan-photos/<uid>/<scanId>.jpg (upsert:false,
@@ -71,7 +71,11 @@ export async function createScan(input: {
   // The photo was saved under a temporary id; give it the scan's id.
   const temp = localScanPhoto(input.owner, input.tempId);
   const final = localScanPhoto(input.owner, scan.id);
-  if (temp.exists && temp.uri !== final.uri) await temp.move(final);
+  if (temp.exists && temp.uri !== final.uri) {
+    // The row is new, so a file already at its path is stale (e.g. demo ids restart each launch).
+    if (final.exists) final.delete();
+    await temp.move(final);
+  }
 
   await input.repos.scanQueue.put({
     scan_id: scan.id,

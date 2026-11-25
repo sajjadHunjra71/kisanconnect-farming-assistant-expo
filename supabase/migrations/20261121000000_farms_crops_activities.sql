@@ -1,4 +1,4 @@
--- KisanConnect · Phase 2 · farms, crops, activities
+-- KisanConnect · farms, crops, activities
 --
 -- Sync model (offline-first):
 --   * ids are uuids made on the device, so rows can be created offline.

@@ -1,6 +1,6 @@
 /**
  * On-device leaf model. The real model (react-native-fast-tflite, INT8 TFLite) needs a
- * development build (Phase 4E). In Expo Go and on web the app uses UnavailableModel,
+ * development build. In Expo Go and on web the app uses UnavailableModel,
  * so scans go straight to the cloud check.
  */
 import type { CropId } from '@/engine';
@@ -34,7 +34,7 @@ export function diseaseModel(): DiseaseModel {
   return current;
 }
 
-/** Phase 4E: the dev build registers the TFLite model here at start-up. */
+/** The dev build registers the TFLite model here at start-up. */
 export function setDiseaseModel(model: DiseaseModel) {
   current = model;
 }

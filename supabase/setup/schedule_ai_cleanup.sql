@@ -1,4 +1,4 @@
--- KisanConnect · run ONCE in the SQL editor after deploying scan-cleanup (Phase 4).
+-- KisanConnect · run ONCE in the SQL editor after deploying scan-cleanup.
 -- Needs the Vault secret created by schedule_weather_alerts.sql (same cron secret).
 -- Replace <PROJECT_REF>.
 --

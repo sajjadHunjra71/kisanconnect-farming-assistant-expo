@@ -1,4 +1,4 @@
--- KisanConnect · Phase 3 · weather alerts, push tokens, notification preferences
+-- KisanConnect · weather alerts, push tokens, notification preferences
 
 -- ── push tokens ─────────────────────────────────────────────
 -- Token is globally unique: a phone that switches accounts moves its token.

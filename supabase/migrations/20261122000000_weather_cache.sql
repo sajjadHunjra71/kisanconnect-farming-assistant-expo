@@ -1,4 +1,4 @@
--- KisanConnect · Phase 3 · weather cache, rate limits, cron secret check
+-- KisanConnect · weather cache, rate limits, cron secret check
 -- Everything here is for Edge Functions (service role) only: RLS on, no policies,
 -- and nothing granted to anon / authenticated.
 

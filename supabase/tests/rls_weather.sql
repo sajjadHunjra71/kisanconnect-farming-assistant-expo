@@ -1,4 +1,4 @@
--- RLS + privilege checks for the Phase 3 tables (weather cache, rate limits, push tokens,
+-- RLS + privilege checks for the weather tables (weather cache, rate limits, push tokens,
 -- alerts, notification prefs, cron secret). Run as postgres; everything is rolled back.
 --   psql "$DB_URL" -f supabase/tests/rls_weather.sql
 -- A failed check raises an exception; a passed check prints a NOTICE.

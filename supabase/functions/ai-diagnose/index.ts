@@ -7,7 +7,7 @@
 //  3. Quota: use_ai_quota → per-user daily cap AND shared global budget (Pacific day).
 //     No quota → 202 { status: "waiting" }.
 //  4. Context sent to the cloud model: crop, growth stage, district, 7-day weather summary
-//     from the Phase 3 cache, on-device top-3. Never the user's name, email, GPS or farm name.
+//     from the forecast cache, on-device top-3. Never the user's name, email, GPS or farm name.
 //  5. Cloud model: Groq (OpenAI-compatible chat completions, vision model, JSON mode). The
 //     photo goes as a base64 data URL (≤ 1.5 MB JPEG, well under Groq's 20 MB request
 //     limit; already resized on the phone). The JSON format is described in the system
@@ -23,8 +23,7 @@
 //  6. Server-only columns written with the service role; ai_events gets one row
 //     (no photo, no prompt).
 //
-// History: this used Google Gemini until 2026-11-25; replaced by Groq because the
-// Gemini free tier was not available for the project.
+// Earlier versions used Google Gemini; the provider is isolated in callModel().
 //
 // Secrets: GROQ_API_KEY; optional GROQ_MODEL (default below; must be a Groq vision model),
 //          AI_DAILY_BUDGET (default 200), AI_SCANS_PER_USER (default 10).

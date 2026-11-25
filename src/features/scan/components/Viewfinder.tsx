@@ -7,7 +7,7 @@ import { useTheme } from '@/theme';
 
 const SIZE = 240;
 
-/** Camera placeholder with scan-line animation. Replaced by expo-camera preview in Phase 4. */
+/** Camera placeholder with scan-line animation. */
 export function Viewfinder({ hint }: { hint: string }) {
   const { colors, radius } = useTheme();
   const y = useSharedValue(0);

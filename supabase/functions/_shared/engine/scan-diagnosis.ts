@@ -80,7 +80,7 @@ export type WeatherSummary = {
   avgHumidity: number | null;
 };
 
-/** The last 7 days up to and including `today` (local), from the Phase 3 forecast cache. */
+/** The last 7 days up to and including `today` (local), from the forecast cache. */
 export function weatherSummary7d(f: Forecast, today: string): WeatherSummary {
   const d = f.daily;
   const end = d.date.indexOf(today);

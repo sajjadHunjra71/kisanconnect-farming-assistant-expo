@@ -1,108 +1,94 @@
 # KisanConnect
 
-Smart farming assistant for farmers in Punjab, Pakistan. Built with Expo (React Native) and TypeScript.
+**A smart farming assistant for smallholder farmers in Punjab, Pakistan: offline-first farm records, crop-aware weather alerts and an AI leaf check with safety guardrails, in English and Urdu.**
 
-> Status: **UI phase.** All screens are built and use clearly labelled sample data. Backend (Supabase), sign-in and AI arrive in the next phases. See [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md).
+<p align="center">
+  <img src="docs/media/splash.gif" width="240" alt="Animated splash screen" />
+  &nbsp;&nbsp;
+  <img src="docs/media/02-home.png" width="240" alt="Home: weather for the farm, quick actions and crop cards" />
+  &nbsp;&nbsp;
+  <img src="docs/media/scan-result.gif" width="240" alt="Leaf check result scrolling: possible causes and checks" />
+</p>
 
-![KisanConnect screens: welcome, home, scan, Urdu home, dark mode](docs/screenshots/preview.png)
+## The problem
 
-## Features (planned, UI ready)
-- **Today**: weather for your farm, crop stage, tasks and advice.
-- **Weather intelligence**: hourly + 7-day forecast, spray window, irrigation advice (FAO-56), alerts.
-- **Leaf scan**: on-device disease model with a cloud second opinion. Always "possible", never "confirmed".
-- **Ask AI**: chat with text or voice that knows your crop, stage and weather.
-- **Mandi rates** with a visible rate date, **expert questions**, **farm management**.
-- **English + Urdu**, switch with one tap in Settings (RTL supported). Light, dark and auto themes.
+Most farmers in Punjab decide when to irrigate, spray or ask for help from experience and word of mouth. Weather apps are generic, connectivity in the field is patchy, and a wrong spray (wrong product, wrong dose, rain an hour later) costs money and harms the crop. Plant-disease apps that "diagnose" from a photo often sound certain when they are not, and some recommend chemicals and doses directly.
+
+## The solution
+
+KisanConnect keeps a farmer's farms, crops and field activities on the phone and syncs them when there is signal. It turns a forecast into advice for the crop the farmer is actually growing (spray windows, irrigation timing, heat, frost and disease-weather warnings) and pushes alerts for their farms. A leaf photo gets a careful second opinion, "possible" rather than "confirmed", and treatment advice only ever comes from a vetted knowledge base, never from the AI.
+
+## Features
+
+- **Offline-first farm and crop tracking.** Farms, crops (including planned sowings), irrigation, fertiliser, spray and harvest logs work without a connection. Changes queue locally and sync in the background with conflict handling.
+- **Crop growth-stage engine.** Wheat, rice, cotton, sugarcane and maize calendars place each crop on its stage timeline from the sowing date, with days to the next stage and to harvest.
+- **Hyperlocal weather with farm alerts.** Current conditions, a 24-hour strip, a 7-day forecast and a less-certain outlook to 14 days. Spray windows, FAO-56 crop water use and irrigation advice, and heat, frost, heavy-rain, wind and fog alerts per farm, delivered as push notifications by a scheduled server job.
+- **AI leaf check with guardrails.** A photo quality check catches blurry, dark and too-far images first. A cloud vision model then proposes likely causes, restricted to a per-crop allow-list of diseases, with questions to confirm and safe next steps. A dose filter removes any amount, rate, product or chemical from AI text. Results are "likely", "possible" or "unclear", and the expert button is always one tap away.
+- **Bilingual and RTL-ready.** English and Urdu (Nastaliq) switch instantly, with full right-to-left layout. Light, dark and automatic themes, 48 dp touch targets and icons on every label.
+- **Privacy built in.** Explicit consent before any photo leaves the phone, private per-user photo storage, automatic clean-up, data export and account deletion.
+
+## Screenshots
+
+| | | |
+|:-:|:-:|:-:|
+| <img src="docs/media/01-welcome.png" width="230" alt="Welcome" /> | <img src="docs/media/03-weather.png" width="230" alt="Weather now with hourly strip" /> | <img src="docs/media/04-forecast.png" width="230" alt="7-day forecast and crop water loss" /> |
+| Welcome | Weather for the farm | 7-day forecast |
+| <img src="docs/media/05-farm.png" width="230" alt="Farm summary" /> | <img src="docs/media/06-crop-stages.png" width="230" alt="Crop stage timeline" /> | <img src="docs/media/07-log-activity.png" width="230" alt="Log an activity" /> |
+| Farm summary | Crop stage timeline | Activity log |
+| <img src="docs/media/08-scan.png" width="230" alt="Scan a leaf with photo guide" /> | <img src="docs/media/09-scan-result.png" width="230" alt="Leaf check result" /> | <img src="docs/media/11-urdu-rtl.png" width="230" alt="Settings in Urdu, right to left" /> |
+| Scan with photo guide | Leaf check result | Urdu, right to left |
+
+<p align="center"><img src="docs/media/language-switch.gif" width="240" alt="Switching between English and Urdu" /></p>
+
+<sub>Screens show the built-in demo mode with sample data. The leaf image is an illustration.</sub>
 
 ## Tech stack
-Expo SDK 58 · React Native 0.88 · TypeScript (strict) · Expo Router · Zustand · i18next · Reanimated · react-native-svg.
-Planned: Supabase (Auth, Postgres, Storage, Edge Functions), Open-Meteo, on-device TFLite + Groq vision model (free tier) for online leaf checks.
 
-## Run
+| Layer | Technology |
+|---|---|
+| App | Expo SDK 58, React Native 0.88, TypeScript (strict), Expo Router (typed routes), Zustand, i18next, Reanimated |
+| On-device data | Expo SQLite (one database per user, versioned migrations) |
+| Backend | Supabase: Postgres with Row Level Security, Auth (email and Google), Storage, Edge Functions (Deno), pg_cron, Vault |
+| Weather | Open-Meteo with MET Norway fallback, cached server-side per grid cell |
+| AI | Groq vision model (OpenAI-compatible API, JSON mode) behind an Edge Function; on-device TFLite model (MobileNetV3) training notebook in `ml/` |
+| Notifications | Expo push notifications |
+| Testing | Jest (unit), SQL tests for Row Level Security, `deno check` for Edge Functions |
+
+## Architecture and engineering decisions
+
+- **Offline outbox with compare-and-swap sync.** Every local write goes into an outbox in the same SQLite transaction as the row change. Pending operations on the same row are coalesced (create + delete never reaches the server). Pushes carry the row's base version, and the server applies them only if the version still matches, so concurrent edits from two devices are detected rather than silently overwritten. Pulls page through `(updated_at, id)` cursors.
+- **Per-user local database.** Each signed-in user gets their own SQLite file, so data never mixes on a shared phone. Schema changes run as ordered migrations tracked with `PRAGMA user_version`, tested against databases from every earlier version.
+- **Security enforced on the server.** Row Level Security on every table, composite foreign keys that tie a crop or scan to the same user's farm, triggers that keep server-only columns (AI results, roles) out of client reach, and a private storage bucket where each user can only touch their own folder. Every Edge Function verifies the caller itself, and scheduled jobs authenticate with a secret stored in Vault.
+- **One rules engine for app and server.** Crop calendars, weather rules, irrigation maths, the disease knowledge base, the dose filter and the scan-combining logic are pure TypeScript in `src/engine`. A script copies the engine into the Edge Functions, and a unit test fails if the copy is stale, so phone and server never disagree.
+- **AI cost and quota guardrails.** Each check atomically takes one unit from a per-user daily cap and a shared daily budget, or neither. Units are refunded when the model is busy or misconfigured, busy responses are retried with backoff, and setup errors leave a scan "waiting" instead of failing it. Only short error codes are logged: never prompts, photos or keys.
+- **Safety by design for AI advice.** The model may only answer with disease ids from the crop's allow-list. Its text is filtered for doses, rates, products, chemicals and non-Latin script, and treatment advice is shown only from the knowledge base. The phone-reported on-device result is treated as untrusted input.
+- **Privacy.** Consent is versioned, so a change in AI provider asks again. Prompts carry crop, stage, district and a weather summary, never names, contact details or GPS. Photos live in private storage, deleted scans and orphan files are cleaned up daily, and account deletion removes everything.
+
+## Testing
+
+184 unit tests (Jest) cover the rules engine, sync and outbox logic, SQLite migrations on a real SQLite engine, the scan queue and the AI response handling. SQL test scripts verify Row Level Security and privileges for farms, weather and scans, and every Edge Function passes `deno check`.
+
+```bash
+npx tsc --noEmit
+npm test
+```
+
+## Run locally
+
 ```bash
 npm install
-cp .env.example .env      # add Supabase URL + anon key; without them the app runs in demo mode
-npx expo start            # open in Expo Go (iOS simulator: press i)
-npm run typecheck
-```
-Google sign-in uses Supabase's browser flow (`expo-web-browser`), so login works in Expo Go with no native build. Backend setup (SQL, providers, Edge Function) is in [`supabase/README.md`](supabase/README.md). Native builds for later phases (camera, voice) will use EAS cloud builds.
-
-## Roadmap
-| Phase | Scope | Status |
-|---|---|---|
-| 0 | Foundation, design system, full UI | ✅ Done |
-| 1 | Auth (Google + email via Supabase), profile | ✅ Code done, needs Supabase keys |
-| 2 | Farm & crop management, offline sync | ✅ Code done, test with docs/TESTING-PHASE2.md |
-| 3 | Weather intelligence + push alerts | ✅ Code done, test with docs/TESTING-PHASE3.md |
-| 4 | Crop disease detection (on-device + AI second opinion) | Planned |
-| 5 | AI assistant + voice | Planned |
-| 6 | Irrigation & reminders | Planned |
-| 7 | Mandi prices | Planned |
-| 8 | Expert connection | Planned |
-| 9 | Hardening & release | Planned |
-
-## Crop disease scan (Phase 4, in progress)
-
-- Classes for the on-device model: wheat (yellow rust, brown rust, septoria, healthy), rice (blast, brown spot, bacterial leaf blight, healthy), cotton (leaf curl virus, bacterial blight, leaf spot, healthy) + a shared "unclear" class. Stem rust, sugarcane and maize use the cloud check only.
-- Treatment advice comes only from the knowledge base (`src/engine/disease-kb.ts`); chemical control is quoted from Punjab Agriculture Department / PARC / university advisories with source and date, or left empty ("ask an expert"). The AI never gives doses (`src/engine/dose-filter.ts`).
-- **Data sources:** training images from openly licensed (CC BY 4.0) Mendeley Data datasets from Pakistan, India, Bangladesh and Ethiopia, plus Open Images (CC BY 2.0) for "unclear". Full list with links and licences: [`ml/DATASETS.md`](ml/DATASETS.md).
-
-## Weather intelligence
-
-- **Forecast:** Open-Meteo (14 days ahead, 30 days back), with MET Norway as a fallback, through the `weather-proxy` Edge Function. Farms are snapped to a ~11 km grid cell; one cached forecast per cell, provider and schema version is shared for 15 minutes ("now" uses Open-Meteo's 15-minute current conditions), and only the cell centre is sent to the provider. Each user can trigger a limited number of fresh fetches per hour. The phone keeps the last forecast per user and farm so it still shows offline, and refreshes it when the Weather or Home screen opens or the app comes back to the front if it is older than 15 minutes; after 24 h it says "Old forecast" and hides advice. Days 8–14 are shown as "Outlook (less certain)". Screens credit "Weather data by Open-Meteo.com" / "MET Norway" (CC BY 4.0).
-- **Rules** (`src/engine`, plain TypeScript, unit-tested, copied into the Edge Functions):
-  - Spray (05:00–19:00): avoid if rain chance > 40% within 6 h, wind > 15 km/h, gusts > 25 km/h or > 35 °C; take care if wind < 3 km/h, humidity < 40% or the rain chance is unknown.
-  - Irrigation (FAO-56): Kc by growth period, root depth by stage, soil water from the farm's soil type, RAW = p × TAW × Zr, effective rain = 80% of days ≥ 5 mm, counted from the last logged irrigation. If nothing is logged on an older crop the app asks for it instead of guessing. Rice: keep standing water.
-  - Alerts: heatwave (≥ 45 °C on 2+ days), crop heat stress at sensitive stages, frost for sugarcane/maize/heading wheat, heavy rain (≥ 35 mm/day), gusts ≥ 50 km/h, fog (visibility, or humid calm nights when visibility is missing).
-  - Disease weather (by stage and season): wheat yellow rust, rice blast, cotton boll rot; cards link to Scan. No weather rule for cotton leaf curl (it's spread by whitefly).
-  - Missing provider values are treated as "limited data", never as 0. All thresholds are indicative guides.
-- **Alerts:** `weather-alerts` runs every 3 hours (pg_cron + Vault secret), stores each alert once in `alerts` (inbox, bell on Home), pushes it via Expo respecting the user's alert types and quiet hours, checks receipts and drops dead tokens. Phones without push (simulator, Expo Go on Android) get a local notification when the alert syncs in.
-
-## Offline sync
-
-Farm data (farms, crops, activity log) works fully offline and syncs with Supabase when there is internet.
-
-- **Per-user database.** Each signed-in user gets their own SQLite file on the phone (`kisan-<userId>.db`). Signing out or deleting the account deletes that file; if the session simply expires, the file is kept and the app asks the user to sign in again to upload what's waiting. Demo mode and web use in-memory sample data.
-- **Outbox.** Every save writes the row and an outbox entry in one transaction, so nothing is lost if the app closes. Edits to the same row before it's uploaded are merged into one entry; a row created and deleted before upload never reaches the server.
-- **Compare-and-set versions.** Every server row has a `version` that the database bumps on each write. The app updates with `where version = <the version I started from>`. If someone else changed the row first, 0 rows change, the server copy wins locally and the row is marked "Updated from another device". A `last_op_id` on each row lets the app recognise its own write when a response was lost.
-- **Delete wins.** Rows are soft-deleted (`deleted_at`). A deleted row can't be brought back, and deleting a farm or crop deletes its children on the server too.
-- **Pull.** Changes are downloaded per table by `(updated_at, id)` pages with a 2-minute overlap; a cursor older than 90 days triggers a full re-download.
-- Code: `src/db` (local storage, outbox), `src/sync` (engine, Supabase transport, triggers), `supabase/migrations/20261121000000_farms_crops_activities.sql` (tables, triggers, RLS), `supabase/tests/rls_farms.sql` (RLS checks).
-
-## Project structure
-```
-src/
-  app/                 Routes only (Expo Router)
-    (onboarding)/      welcome, language, farm-setup
-    (auth)/            sign-in, sign-up, forgot-password, check-email
-    auth/              callback, reset (deep-link targets for email links + Google)
-    (tabs)/            index (Home), weather, scan, assistant, farm
-    scan/result, mandi, expert/, settings
-  components/
-    ui/                Reusable primitives (Text, Button, Card, Chip, TextField, ...)
-    layout/            TabBar
-  features/<feature>/components   Feature-specific components
-  theme/               Palette, spacing/radius tokens, typography, ThemeProvider
-  i18n/                i18next setup, languages, locales/en.json + ur.json
-  hooks/               useDirection (RTL), useLocalized
-  store/               Zustand settings store (persisted)
-  config/env.ts        Public env (EXPO_PUBLIC_*) only
-  mocks/               Sample data for UI work (to be replaced)
-  types/               Domain types
+cp .env.example .env   # optional: add your Supabase URL and anon key
+npx expo start
 ```
 
-## Design system
-- **Palette "field almanac"**: paper cream `#F6F2E9`, forest green `#1F5C3F`, wheat gold `#D9A13B`, terracotta `#B5532E` for risk, sky `#2F6F9F` for weather. Full dark palette included.
-- **Type**: Fraunces (display), Plus Jakarta Sans (UI), Noto Nastaliq Urdu (Urdu, with taller line height).
-- 48 dp minimum touch targets, high contrast, icons with every label, read-aloud planned on every answer.
+Without Supabase keys the app runs in demo mode with clearly labelled sample data. Backend setup (migrations, Edge Functions, schedules) is described in [`supabase/README.md`](supabase/README.md). Only `EXPO_PUBLIC_*` values belong in `.env`; server secrets live in Supabase Edge Function secrets.
 
-## Adding a language
-1. Add it to `src/i18n/languages.ts` (code, native name, `ltr`/`rtl`).
-2. Add `src/i18n/locales/<code>.json` with the same keys as `en.json`.
-3. Add the language to data `Localized` fields where needed.
+## Credits
 
-## Secrets
-Only `EXPO_PUBLIC_*` values go in `.env` (they are bundled into the app). Server secrets such as the Groq API key and Supabase service-role key live only in Supabase Edge Function secrets. `.env` is git-ignored.
+Weather data by [Open-Meteo](https://open-meteo.com) and [MET Norway](https://api.met.no) (CC BY 4.0). Leaf-model training datasets are listed with their licences in [`ml/DATASETS.md`](ml/DATASETS.md).
 
-## License
-MIT © 2026 Sajjad Khalid
+## Author
+
+**Sajjad Khalid** · [GitHub](https://github.com/sajjadHunjra71)
+
+MIT License

@@ -1,4 +1,4 @@
--- KisanConnect · Phase 1 · profiles
+-- KisanConnect · profiles
 -- One row per auth user. Row Level Security: a user can only see and edit their own row.
 
 create table if not exists public.profiles (

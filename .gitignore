@@ -55,3 +55,7 @@ ml/out/
 ml/*.zip
 *.tflite
 *.onnx
+
+# Internal notes and local tool config (kept out of the public repo)
+AGENTS.md
+.claude/
