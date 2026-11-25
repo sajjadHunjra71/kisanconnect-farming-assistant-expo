@@ -16,7 +16,7 @@ Smart farming assistant for farmers in Punjab, Pakistan. Built with Expo (React 
 
 ## Tech stack
 Expo SDK 58 · React Native 0.88 · TypeScript (strict) · Expo Router · Zustand · i18next · Reanimated · react-native-svg.
-Planned: Supabase (Auth, Postgres, Storage, Edge Functions), Open-Meteo, on-device TFLite + Gemini (free tier).
+Planned: Supabase (Auth, Postgres, Storage, Edge Functions), Open-Meteo, on-device TFLite + Groq vision model (free tier) for online leaf checks.
 
 ## Run
 ```bash
@@ -102,7 +102,7 @@ src/
 3. Add the language to data `Localized` fields where needed.
 
 ## Secrets
-Only `EXPO_PUBLIC_*` values go in `.env` (they are bundled into the app). Server secrets such as the Gemini API key and Supabase service-role key live only in Supabase Edge Function secrets. `.env` is git-ignored.
+Only `EXPO_PUBLIC_*` values go in `.env` (they are bundled into the app). Server secrets such as the Groq API key and Supabase service-role key live only in Supabase Edge Function secrets. `.env` is git-ignored.
 
 ## License
 MIT © 2026 Sajjad Khalid

@@ -5,22 +5,29 @@
 //  2. Scan: loaded with the CALLER's JWT, so RLS proves ownership. Photo must be at
 //     scan-photos/<uid>/<scan_id>.jpg, ≤ 1.5 MB, real JPEG (magic bytes).
 //  3. Quota: use_ai_quota → per-user daily cap AND shared global budget (Pacific day).
-//     No quota / Gemini busy (429/503) → 202 { status: "waiting" }; units are refunded
-//     when Gemini fails before answering.
-//  4. Context sent to Gemini: crop, growth stage, district, 7-day weather summary from the
-//     Phase 3 cache, on-device top-3. Never the user's name, email, GPS or farm name.
-//  5. Gemini JSON mode with responseSchema (id enum = this crop's KB ids + "unknown"),
-//     Zod shape check + engine sanitizer (dose filter, caps). One retry (one more global
-//     unit). Still no usable answer → final_status "unclear" with "take a clearer photo"
-//     steps; Gemini rejecting the request itself → "failed". Either way ai_result.reason
-//     holds a short code. Key / API / model setup errors (400 API_KEY_*, 401, 403, 404)
-//     never fail a scan: quota refunded, 202 waiting (reason "ai_unavailable").
+//     No quota → 202 { status: "waiting" }.
+//  4. Context sent to the cloud model: crop, growth stage, district, 7-day weather summary
+//     from the Phase 3 cache, on-device top-3. Never the user's name, email, GPS or farm name.
+//  5. Cloud model: Groq (OpenAI-compatible chat completions, vision model, JSON mode). The
+//     photo goes as a base64 data URL (≤ 1.5 MB JPEG, well under Groq's 20 MB request
+//     limit; already resized on the phone). The JSON format is described in the system
+//     prompt; Zod shape check + engine sanitizer (id allow-list, dose filter, caps).
+//     Groq busy (429 / 498 / 503) or down (5xx / network): retried with backoff inside this
+//     call, then 202 waiting with all units refunded.
+//     Unusable answer: one more try (one more global unit), then final_status "unclear"
+//     with "take a clearer photo" steps. Groq rejecting the request itself → "failed".
+//     Setup errors (no key, 401, 403, 404, model / key / organization codes) never fail a
+//     scan: units refunded, 202 waiting (reason "ai_unavailable").
+//     Every non-answer keeps a short code in ai_result.reason / ai_events.status.
 //     A "failed" scan may be checked again ("Try again").
 //  6. Server-only columns written with the service role; ai_events gets one row
 //     (no photo, no prompt).
 //
-// Secrets: GEMINI_API_KEY, GEMINI_MODEL (stable non-preview Flash / Flash-Lite id),
-//          optional AI_DAILY_BUDGET (default 200), AI_SCANS_PER_USER (default 10).
+// History: this used Google Gemini until 2026-11-25; replaced by Groq because the
+// Gemini free tier was not available for the project.
+//
+// Secrets: GROQ_API_KEY; optional GROQ_MODEL (default below; must be a Groq vision model),
+//          AI_DAILY_BUDGET (default 200), AI_SCANS_PER_USER (default 10).
 // Deploy:  npx supabase functions deploy ai-diagnose --use-api   (verify_jwt=false; checked in code)
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@4';
@@ -32,11 +39,12 @@ import {
   DEFAULT_MODEL_THRESHOLD,
   DIAGNOSIS_SYSTEM,
   buildDiagnosisPrompt,
-  classifyGeminiError,
+  classifyAiError,
   clearerPhotoDiagnosis,
   combineResults,
   isModelOutputReason,
-  diagnosisResponseSchema,
+  parseModelJson,
+  retryDelayMs,
   sanitizeDiagnosis,
   weatherSummary7d,
   type AiDiagnosis,
@@ -46,7 +54,12 @@ import {
 import { cacheKey, gridCell, localHour, type Forecast, type Provider } from '../_shared/engine/weather-rules.ts';
 
 const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
-const GEMINI_TIMEOUT_MS = 30_000;
+const AI_TIMEOUT_MS = 25_000; // × up to 3 tries, inside the Edge Function wall-clock limit
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+/** Groq's production vision model (2026-11; Llama 4 Scout was shut down 2026-07-17). */
+const DEFAULT_GROQ_MODEL = 'qwen/qwen3.8-27b';
+/** Tries per call when Groq is busy or down (with backoff), before telling the phone to wait. */
+const BUSY_TRIES = 3;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const cors = {
@@ -132,14 +145,16 @@ Deno.serve(async (req) => {
   if (quota !== 'ok') return json({ status: 'waiting', reason: quota }, 202);
 
   const context = await loadContext(userClient, admin, scan);
-  const model = Deno.env.get('GEMINI_MODEL') ?? 'gemini-2.5-flash';
-  const apiKey = Deno.env.get('GEMINI_API_KEY');
+  const model = Deno.env.get('GROQ_MODEL') || DEFAULT_GROQ_MODEL;
+  const apiKey = Deno.env.get('GROQ_API_KEY');
+  const started = Date.now();
   if (!apiKey) {
+    // Not set up yet: same as any setup error — the scan waits, nothing is used up.
     await admin.rpc('refund_ai_quota', { p_user: user.id, p_kind: 'scan', p_global_units: 1, p_user_unit: true });
-    return json({ error: 'not_configured' }, 500);
+    await logEvent(admin, user.id, model, {}, 0, 'setup_error:no_api_key');
+    return json({ status: 'waiting', reason: 'ai_unavailable', detail: 'no_api_key' }, 202);
   }
 
-  const started = Date.now();
   let globalUnits = 1;
   let diagnosis: AiDiagnosis | null = null;
   let meta: { modelVersion?: string; tokens?: number; requestId?: string } = {};
@@ -151,17 +166,17 @@ Deno.serve(async (req) => {
       if (more !== true) break;
       globalUnits++;
     }
-    const res = await callGemini(apiKey, model, scan.crop_key, context, bytes);
+    const res = await callModel(apiKey, model, scan.crop_key, context, bytes);
     meta = res.meta;
     if (res.kind === 'busy' || res.kind === 'network') {
-      // Gemini didn't answer: give everything back, the phone tries again later.
+      // Groq didn't answer even after retries: give everything back, the phone tries later.
       await admin.rpc('refund_ai_quota', { p_user: user.id, p_kind: 'scan', p_global_units: globalUnits, p_user_unit: true });
-      await logEvent(admin, user.id, model, meta, Date.now() - started, res.kind === 'busy' ? 'rate_limited' : 'error');
-      return json({ status: 'waiting', reason: res.kind === 'busy' ? 'gemini_busy' : 'gemini_unreachable' }, 202);
+      await logEvent(admin, user.id, model, meta, Date.now() - started, `${res.kind === 'busy' ? 'rate_limited' : 'error'}:${res.reason}`);
+      return json({ status: 'waiting', reason: res.kind === 'busy' ? 'ai_busy' : 'ai_unreachable', detail: res.reason }, 202);
     }
     if (res.kind === 'setup') {
-      // Key / API / model misconfigured on our side: not the farmer's photo. Refund, keep the
-      // scan waiting (not "failed"), and record Google's reason code for whoever fixes the setup.
+      // Key / model / organization misconfigured on our side: not the farmer's photo. Refund,
+      // keep the scan waiting (not "failed"), and record the error code for whoever fixes it.
       await admin.rpc('refund_ai_quota', { p_user: user.id, p_kind: 'scan', p_global_units: globalUnits, p_user_unit: true });
       await logEvent(admin, user.id, model, meta, Date.now() - started, `setup_error:${res.reason}`);
       return json({ status: 'waiting', reason: 'ai_unavailable', detail: res.reason }, 202);
@@ -185,9 +200,9 @@ Deno.serve(async (req) => {
         };
       })()
     : isModelOutputReason(failReason)
-      ? // Gemini answered twice but not usably: an honest "unclear" with what to do next.
+      ? // The model answered twice but not usably: an honest "unclear" with what to do next.
         { ai_result: { ...clearerPhotoDiagnosis(), model, reason: failReason }, final_status: 'unclear', top_disease_id: null, needs_expert_ai: true, checked_at: now }
-      : // Gemini rejected our request (not a setup error): failed, with a short reason code.
+      : // Groq rejected our request (not a setup error): failed, with a short reason code.
         { ai_result: { error: 'invalid_answer', reason: failReason, model }, final_status: 'failed', top_disease_id: null, needs_expert_ai: true, checked_at: now };
 
   const { error: upError } = await admin.from('scans').update(update).eq('id', scan.id).eq('user_id', user.id);
@@ -223,72 +238,91 @@ async function loadContext(userClient: SupabaseClient, admin: SupabaseClient, sc
   return { stage, district, weather, modelTop: scan.model_result?.top ?? null };
 }
 
-/* ── Gemini ─────────────────────────────────────────────── */
+/* ── Cloud model (Groq) ─────────────────────────────────── */
 
-type GeminiResult =
+type ModelResult =
   | { kind: 'answer'; diagnosis: AiDiagnosis; meta: Meta }
   | { kind: 'invalid'; reason: string; meta: Meta }
   | { kind: 'setup'; reason: string; meta: Meta }
-  | { kind: 'busy'; meta: Meta }
-  | { kind: 'network'; meta: Meta };
+  | { kind: 'busy'; reason: string; meta: Meta }
+  | { kind: 'network'; reason: string; meta: Meta };
 type Meta = { modelVersion?: string; tokens?: number; requestId?: string };
 
-async function callGemini(
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function callModel(
   apiKey: string,
   model: string,
   crop: CropId,
   ctx: { stage: string | null; district: string | null; weather: WeatherSummary | null; modelTop: ModelTop | null },
   photo: Uint8Array,
-): Promise<GeminiResult> {
-  const body = {
-    systemInstruction: { parts: [{ text: DIAGNOSIS_SYSTEM }] },
-    contents: [
+): Promise<ModelResult> {
+  const body = JSON.stringify({
+    model,
+    messages: [
+      { role: 'system', content: DIAGNOSIS_SYSTEM },
       {
         role: 'user',
-        parts: [
-          { text: buildDiagnosisPrompt({ crop, ...ctx }) },
-          { inline_data: { mime_type: 'image/jpeg', data: toBase64(photo) } },
+        content: [
+          { type: 'text', text: buildDiagnosisPrompt({ crop, ...ctx }) },
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${toBase64(photo)}` } },
         ],
       },
     ],
-    generationConfig: { responseMimeType: 'application/json', responseSchema: diagnosisResponseSchema(crop), temperature: 0.2, maxOutputTokens: 1024 },
-  };
-  let res: Response;
-  try {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
-    });
-  } catch {
-    return { kind: 'network', meta: {} };
+    response_format: { type: 'json_object' },
+    temperature: 0.2,
+    max_completion_tokens: 2048,
+  });
+
+  // Busy / down: a few tries with backoff (Groq's retry-after when given).
+  let last: ModelResult = { kind: 'network', reason: 'not_called', meta: {} };
+  let retryAfter: string | null = null;
+  for (let attempt = 0; attempt < BUSY_TRIES; attempt++) {
+    if (attempt > 0) await sleep(retryDelayMs(attempt - 1, retryAfter));
+    retryAfter = null;
+    let res: Response;
+    try {
+      res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body,
+        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+      });
+    } catch {
+      last = { kind: 'network', reason: 'network', meta: {} };
+      continue;
+    }
+    if (!res.ok) {
+      retryAfter = res.headers.get('retry-after');
+      const e = classifyAiError(res.status, await res.json().catch(() => null));
+      console.error('model error', e.reason); // status / type / code only: no prompt, photo or key
+      if (e.kind === 'busy') {
+        last = { kind: 'busy', reason: e.reason, meta: {} };
+        continue;
+      }
+      if (e.kind === 'server') {
+        last = { kind: 'network', reason: e.reason, meta: {} };
+        continue;
+      }
+      if (e.kind === 'output') return { kind: 'invalid', reason: 'unprocessable', meta: {} };
+      return { kind: e.kind, reason: e.reason, meta: {} };
+    }
+    const out = (await res.json().catch(() => null)) as {
+      id?: string;
+      model?: string;
+      choices?: { message?: { content?: string | null } }[];
+      usage?: { total_tokens?: number };
+    } | null;
+    const meta: Meta = { modelVersion: out?.model ?? model, tokens: out?.usage?.total_tokens, requestId: out?.id ?? res.headers.get('x-request-id') ?? undefined };
+    const text = out?.choices?.[0]?.message?.content;
+    if (!text) return { kind: 'invalid', reason: 'empty_answer', meta };
+    const parsed = parseModelJson(text);
+    if (parsed === null) return { kind: 'invalid', reason: 'not_json', meta };
+    if (!AnswerShape.safeParse(parsed).success) return { kind: 'invalid', reason: 'bad_shape', meta };
+    const diagnosis = sanitizeDiagnosis(parsed, crop);
+    return diagnosis ? { kind: 'answer', diagnosis, meta } : { kind: 'invalid', reason: 'unusable_answer', meta };
   }
-  if (!res.ok) {
-    const e = classifyGeminiError(res.status, await res.json().catch(() => null));
-    console.error('gemini error', e.reason); // status / reason codes only: no prompt, photo or key
-    if (e.kind === 'busy') return { kind: 'busy', meta: {} };
-    if (e.kind === 'server') return { kind: 'network', meta: {} };
-    return { kind: e.kind, reason: e.reason, meta: {} };
-  }
-  const out = (await res.json().catch(() => null)) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-    usageMetadata?: { totalTokenCount?: number };
-    modelVersion?: string;
-    responseId?: string;
-  } | null;
-  const meta: Meta = { modelVersion: out?.modelVersion, tokens: out?.usageMetadata?.totalTokenCount, requestId: out?.responseId };
-  const text = out?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return { kind: 'invalid', reason: 'empty_answer', meta };
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return { kind: 'invalid', reason: 'not_json', meta };
-  }
-  if (!AnswerShape.safeParse(parsed).success) return { kind: 'invalid', reason: 'bad_shape', meta };
-  const diagnosis = sanitizeDiagnosis(parsed, crop);
-  return diagnosis ? { kind: 'answer', diagnosis, meta } : { kind: 'invalid', reason: 'unusable_answer', meta };
+  return last;
 }
 
 async function logEvent(admin: SupabaseClient, userId: string, model: string, meta: Meta, latency: number, status: string) {

@@ -69,7 +69,7 @@ describe('scan queue', () => {
     expect((await queue.get(S1))?.check_state).toBe('checked');
   });
 
-  it('waiting (no quota / Gemini busy) stops the queue; the scan stays waiting', async () => {
+  it('waiting (no quota / AI busy) stops the queue; the scan stays waiting', async () => {
     const { deps, calls, queue } = setup([{ id: S1 }, { id: S2 }], () => ({ data: { status: 'waiting', reason: 'budget' } }));
     expect(await runScanQueue(deps)).toBe(0);
     expect(calls.filter((c) => c.startsWith('diagnose'))).toEqual([`diagnose:${S1}`]);

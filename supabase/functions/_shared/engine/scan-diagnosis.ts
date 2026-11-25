@@ -9,7 +9,8 @@ import { filterAiList, filterAiText } from './dose-filter.ts';
 import type { Forecast } from './weather-rules.ts';
 
 /** Bump when the consent text changes: users must agree again before the next cloud check. */
-export const AI_CONSENT_VERSION = 1;
+/** Bump when what the farmer agreed to changes (v2: photos go to Groq instead of Google Gemini). */
+export const AI_CONSENT_VERSION = 2;
 
 /* ───────────────────────── cloud answer ───────────────────────── */
 
@@ -32,34 +33,6 @@ export type AiDiagnosis = {
 /** Ids the cloud may answer for this crop: its KB ids + "unknown". */
 export function allowedAiIds(crop: CropId): string[] {
   return [...kbIdsForCrop(crop), UNKNOWN_ID];
-}
-
-/** Gemini JSON-mode responseSchema (OpenAPI subset) with the id enum for this crop. */
-export function diagnosisResponseSchema(crop: CropId): Record<string, unknown> {
-  return {
-    type: 'OBJECT',
-    properties: {
-      status: { type: 'STRING', enum: [...AI_STATUSES] },
-      possible_causes: {
-        type: 'ARRAY',
-        maxItems: 3,
-        items: {
-          type: 'OBJECT',
-          properties: {
-            id: { type: 'STRING', enum: allowedAiIds(crop) },
-            likelihood: { type: 'STRING', enum: [...LIKELIHOODS] },
-            visible_signs: { type: 'STRING' },
-          },
-          required: ['id', 'likelihood', 'visible_signs'],
-        },
-      },
-      questions_to_confirm: { type: 'ARRAY', maxItems: 4, items: { type: 'STRING' } },
-      next_steps: { type: 'ARRAY', maxItems: 4, items: { type: 'STRING' } },
-      explain: { type: 'STRING' },
-      needs_expert: { type: 'BOOLEAN' },
-    },
-    required: ['status', 'possible_causes', 'questions_to_confirm', 'next_steps', 'explain', 'needs_expert'],
-  };
 }
 
 const RANK: Record<Likelihood, number> = { high: 0, medium: 1, low: 2 };
@@ -135,7 +108,9 @@ export type ModelTop = { id: string; p: number }[];
 /** System instruction: fixed rules (no user data). */
 export const DIAGNOSIS_SYSTEM = [
   'You help Pakistani farmers understand a photo of a crop leaf. You are not a replacement for an expert.',
-  'Answer ONLY with the JSON schema given. Use ONLY the disease ids in the enum; use "unknown" if none fit.',
+  'Reply with ONE JSON object and nothing else, in exactly this format:',
+  '{"status": "ok" | "unclear" | "not_crop", "possible_causes": [{"id": "<allowed id>", "likelihood": "low" | "medium" | "high", "visible_signs": "<short>"}], "questions_to_confirm": ["<short question>"], "next_steps": ["<short step>"], "explain": "<one or two sentences>", "needs_expert": true | false}',
+  'At most 3 possible_causes, 4 questions_to_confirm and 4 next_steps. Use ONLY the allowed ids given; use "unknown" if none fit.',
   'status: "not_crop" if the photo is not a leaf of the stated crop; "unclear" if the photo is too blurry, dark, far or ambiguous to judge.',
   'Never give treatments, product names, chemical names, doses, rates or spray advice. Treatment advice comes from the official knowledge base, not from you.',
   'next_steps: only checks and field care without chemicals (e.g. look at more plants, check undersides, remove badly affected leaves, ask an expert).',
@@ -212,38 +187,67 @@ export function combineResults(model: ModelTop | null, ai: AiDiagnosis | null, t
   return { status: 'unclear', topId: aTop.id, needsExpert: true };
 }
 
-/* ── Gemini HTTP errors ─────────────────────────────────── */
+/* ── Cloud model (Groq) HTTP errors ─────────────────────── */
 
 /**
- * What a non-2xx Gemini answer means for the scan:
- *  - busy:   429 / 503 → try later, quota refunded
- *  - setup:  bad / restricted / blocked key, API not enabled, billing / region, unknown model
- *            (400 API_KEY_INVALID or FAILED_PRECONDITION, 401, 403, 404) → the server is misconfigured; the scan must NOT be marked failed,
- *            it waits until the setup is fixed
- *  - server: other 5xx → try later
- *  - invalid: anything else (a request Gemini rejects) → counts as a failed check
- * `reason` is Google's error status / reason code only (never prompt or photo), for logs.
+ * What a non-2xx answer from Groq's OpenAI-compatible API means for the scan:
+ *  - busy:   429 rate limit, 498 capacity, 503 → retry with backoff, then wait (quota refunded)
+ *  - setup:  missing / invalid key (401), permission or organization restricted (403),
+ *            unknown or decommissioned model (404, or a model_* / *api_key* error code)
+ *            → our setup is wrong; the scan must NOT fail, it waits until it's fixed
+ *  - server: other 5xx → retry, then wait
+ *  - output: 422 (the model produced something unusable) → retry once, then "unclear"
+ *  - invalid: any other 4xx (a request Groq rejects) → counts as a failed check
+ * `reason` holds only the status, error type and error code (never the message, which
+ * may echo request content).
  */
-export type GeminiErrorKind = 'busy' | 'setup' | 'server' | 'invalid';
+export type AiErrorKind = 'busy' | 'setup' | 'server' | 'output' | 'invalid';
 
-export function classifyGeminiError(httpStatus: number, body: unknown): { kind: GeminiErrorKind; reason: string } {
-  const err = (body as { error?: { status?: unknown; message?: unknown; details?: unknown } } | null)?.error;
-  const status = typeof err?.status === 'string' ? err.status : '';
-  const details = Array.isArray(err?.details) ? (err.details as { reason?: unknown }[]) : [];
-  const detail = details.map((d) => (typeof d?.reason === 'string' ? d.reason : '')).find(Boolean) ?? '';
-  const reason = [`http_${httpStatus}`, status, detail].filter(Boolean).join(':');
-  if (httpStatus === 429 || httpStatus === 503) return { kind: 'busy', reason };
+export function classifyAiError(httpStatus: number, body: unknown): { kind: AiErrorKind; reason: string } {
+  const err = (body as { error?: { type?: unknown; code?: unknown } } | null)?.error;
+  const type = typeof err?.type === 'string' ? err.type : '';
+  const code = typeof err?.code === 'string' ? err.code : '';
+  const reason = [`http_${httpStatus}`, type, code].filter(Boolean).join(':');
+  if (httpStatus === 429 || httpStatus === 498 || httpStatus === 503) return { kind: 'busy', reason };
   if (httpStatus === 401 || httpStatus === 403 || httpStatus === 404) return { kind: 'setup', reason };
-  // 400 key errors, and FAILED_PRECONDITION (billing / region not enabled for the project)
-  if (httpStatus === 400 && /API_KEY|SERVICE_DISABLED|BILLING|FAILED_PRECONDITION/.test(`${status}:${detail}`)) return { kind: 'setup', reason };
+  if (/api_key|model_not_found|model_decommissioned|model_permission|organization_restricted/i.test(code)) return { kind: 'setup', reason };
   if (httpStatus >= 500) return { kind: 'server', reason };
+  if (httpStatus === 422) return { kind: 'output', reason };
   return { kind: 'invalid', reason };
+}
+
+/**
+ * The model's reply text → parsed JSON, or null. Tolerates what chat models sometimes add
+ * around the object: <think>…</think> reasoning, ```json fences, a sentence before or after.
+ */
+export function parseModelJson(text: unknown): unknown {
+  if (typeof text !== 'string') return null;
+  const t = text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```(?:json)?/gi, '').trim();
+  const start = t.indexOf('{');
+  const end = t.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    const v: unknown = JSON.parse(t.slice(start, end + 1));
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Wait before retrying a busy / failing call: Groq's retry-after (seconds) when given,
+ * else 1 s, 2 s…; capped so the Edge Function stays well inside its time limit.
+ */
+export function retryDelayMs(attempt: number, retryAfterHeader: string | null, capMs = 4000): number {
+  const ra = retryAfterHeader === null ? NaN : Number(retryAfterHeader);
+  const ms = Number.isFinite(ra) && ra >= 0 ? ra * 1000 : 1000 * 2 ** attempt;
+  return Math.min(ms, capMs);
 }
 
 /* ── Unusable model output ──────────────────────────────── */
 
-/** Reasons that mean Gemini answered, but not with something we can use. */
-export const MODEL_OUTPUT_REASONS = ['empty_answer', 'not_json', 'bad_shape', 'unusable_answer'] as const;
+/** Reasons that mean the model answered, but not with something we can use. */
+export const MODEL_OUTPUT_REASONS = ['empty_answer', 'not_json', 'bad_shape', 'unusable_answer', 'unprocessable'] as const;
 
 export function isModelOutputReason(reason: string): boolean {
   return (MODEL_OUTPUT_REASONS as readonly string[]).includes(reason);

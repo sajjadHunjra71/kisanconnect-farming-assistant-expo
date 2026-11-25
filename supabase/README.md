@@ -24,9 +24,9 @@ Free tier only. Nothing here contains keys.
    npx supabase functions deploy weather-alerts --use-api
    npx supabase functions deploy ai-diagnose --use-api
    npx supabase functions deploy scan-cleanup --use-api
-   npx supabase secrets set GEMINI_API_KEY=<key from Google AI Studio> GEMINI_MODEL=<stable Flash or Flash-Lite model id>
+   npx supabase secrets set GROQ_API_KEY=<key from console.groq.com/keys>
    ```
-   Optional: `AI_DAILY_BUDGET` (shared Gemini calls per Pacific day, default 200; keep it below your project's free requests-per-day) and `AI_SCANS_PER_USER` (default 10).
+   Leaf checks use Groq (Gemini was used until 2026-11-25). Optional: `GROQ_MODEL` (default `qwen/qwen3.8-27b`, must be a Groq vision model), `AI_DAILY_BUDGET` (shared cloud calls per Pacific day, default 200; keep it below Groq's free requests-per-day; the `ai_budget` rows still carry the old kind name `gemini`) and `AI_SCANS_PER_USER` (default 10).
    `config.toml` turns off the gateway JWT check for all three; each function checks the caller itself
    (`delete-account` and `weather-proxy` with `auth.getUser()`, `weather-alerts` with the cron secret).
 6. Weather alerts schedule: open `setup/schedule_weather_alerts.sql`, replace `<PROJECT_REF>`, and run it once in the SQL Editor.

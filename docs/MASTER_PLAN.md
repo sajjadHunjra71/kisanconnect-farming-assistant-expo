@@ -25,7 +25,7 @@ Version 2 · 18 Nov 2026 · Replaces the "v1 scope" section of `kisanconnect-aud
 | Push notifications | Expo Push Service + `expo-notifications` | Free. Used for weather alerts, reminders and expert replies. |
 | Weather | **Open-Meteo** (no key) behind a `WeatherProvider` interface; **MET Norway** as the fallback provider | Both free. Open-Meteo also gives ET₀ for irrigation. |
 | Disease model (on device) | Own TFLite model trained on **free Kaggle / Google Colab GPU**, run with `react-native-fast-tflite` | Free, works offline, fast. |
-| AI brain (cloud) | **Gemini Flash on the free tier** (Google AI Studio key, kept only inside a Supabase Edge Function) | Free vision + text + audio understanding. |
+| AI brain (cloud) | **Groq free tier, vision model** (key kept only inside a Supabase Edge Function; leaf checks moved from Gemini to Groq on 2026-11-25 because the Gemini free tier was unavailable for the project; the planned chat/voice features still name Gemini below and need the same decision) | Free vision + text + audio understanding. |
 | Voice in | `expo-speech-recognition` (phone's own recogniser, English) | Free. |
 | Voice out | `expo-speech` (phone's TTS) | Free. |
 | Maps / location | `expo-location` (district from GPS, or manual pick) | Free. No map SDK needed. |
@@ -76,9 +76,9 @@ Photo → quality check → on-device model (offline, ~1s)
 - **In the app:** `react-native-fast-tflite` runs the model and preprocessing happens on device (resize 224×224). A confidence threshold (tuned on the test set) decides "confident" vs "unsure".
 - **Image quality check before inference:** blur score (Laplacian variance), brightness, and "is there green leaf in frame". Bad photo → "Please take a closer photo in daylight" with a picture guide.
 
-**Layer 2: Gemini vision second opinion (free tier, online)**
+**Layer 2: cloud vision second opinion (Groq free tier, online)**
 - Called through the Supabase Edge Function `ai-diagnose` (the key never ships in the app). Input: resized image (EXIF removed), crop, growth stage, district, last 7 days of weather, and the on-device model's top-3 result.
-- Gemini returns **strict JSON**, validated with Zod: `status (ok|unclear|not_crop)`, `possible_causes[] {id, name_ur, name_en, likelihood: low|medium|high, visible_signs}`, `questions_to_confirm[]`, `next_steps[]`, `needs_expert`.
+- The model returns **JSON** (JSON mode), validated with Zod: `status (ok|unclear|not_crop)`, `possible_causes[] {id, name_ur, name_en, likelihood: low|medium|high, visible_signs}`, `questions_to_confirm[]`, `next_steps[]`, `needs_expert`.
 - If both layers agree, the result is shown as "likely". If they disagree or both are low, it is "unclear", with the expert button highlighted.
 
 **Suggestions (what to do)**
@@ -106,7 +106,7 @@ Photo → quality check → on-device model (offline, ~1s)
 - Input limits: image ≤ 1.5 MB after resize, audio ≤ 60 s, text ≤ 1,000 characters.
 - Zod-validated JSON output, retry once, then a safe fallback message.
 - A logged `ai_events` table (no raw photos in logs) lets us review bad answers.
-- Privacy screen at first launch: on the Gemini free tier, Google may use inputs to improve its products. We tell the user and only send the photo/voice after consent. Offline model results never leave the phone.
+- Privacy screen before the first online check: the photo goes to an outside AI company (Groq for leaf checks). We tell the user and only send the photo/voice after consent. Offline model results never leave the phone.
 
 ---
 

@@ -1,5 +1,5 @@
 import { makeForecast } from './weather-fixture';
-import { buildDiagnosisPrompt, combineResults, diagnosisResponseSchema, sanitizeDiagnosis, weatherSummary7d, type AiDiagnosis } from '../scan-diagnosis';
+import { buildDiagnosisPrompt, combineResults, DIAGNOSIS_SYSTEM, sanitizeDiagnosis, weatherSummary7d, type AiDiagnosis } from '../scan-diagnosis';
 import { REPLACEMENT } from '../dose-filter';
 
 const ai = (over: Partial<AiDiagnosis> = {}): AiDiagnosis => ({
@@ -13,12 +13,14 @@ const ai = (over: Partial<AiDiagnosis> = {}): AiDiagnosis => ({
 });
 
 describe('cloud answer contract', () => {
-  it('response schema limits ids to the crop KB + unknown', () => {
-    const s = diagnosisResponseSchema('wheat') as { properties: { possible_causes: { items: { properties: { id: { enum: string[] } } } } } };
-    const ids = s.properties.possible_causes.items.properties.id.enum;
+  it('the prompt limits ids to the crop KB + unknown and asks for the JSON format', () => {
+    const p = buildDiagnosisPrompt({ crop: 'wheat', stage: null, district: null, weather: null, modelTop: null });
+    const ids = p.match(/Allowed ids: (.*)\./)![1];
     expect(ids).toContain('wheat-yellow-rust');
     expect(ids).toContain('unknown');
     expect(ids).not.toContain('rice-blast');
+    expect(DIAGNOSIS_SYSTEM).toContain('"possible_causes"');
+    expect(DIAGNOSIS_SYSTEM).toContain('ONE JSON object');
   });
 
   it('sanitizes: unknown ids, sorted by likelihood, deduped, dose-filtered, capped', () => {

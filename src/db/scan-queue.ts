@@ -3,7 +3,7 @@
  * the photo is uploaded, and where the cloud check stands.
  *
  *   pending_upload – saved on the phone, photo not uploaded yet
- *   waiting_check  – uploaded, waiting for the online check (offline, no quota, Gemini busy)
+ *   waiting_check  – uploaded, waiting for the online check (offline, no quota, AI busy)
  *   checked        – result received
  *   failed         – the check failed after retries ("try again / ask an expert")
  *   device_only    – no consent / not signed in: no cloud check

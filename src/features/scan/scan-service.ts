@@ -8,7 +8,7 @@
  *   row on server → upload photo to scan-photos/<uid>/<scanId>.jpg (upsert:false,
  *   "already exists" = done) → outbox update sets photo_path → push → ai-diagnose →
  *   pull the server's answer → "Your leaf check is ready" notification.
- * Only while AI consent still holds. 202 "waiting" (no quota / Gemini busy) stops the
+ * Only while AI consent still holds. 202 "waiting" (no quota / AI busy / AI not set up) stops the
  * queue until the next sync; the scan just stays "Waiting for online check".
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -173,7 +173,7 @@ export async function runScanQueue(d: QueueDeps): Promise<number> {
       if (res.data?.status === 'waiting') {
         const why = [res.data.reason, res.data.detail].filter(Boolean).join(' ');
         await d.repos.scanQueue.update(row.id, { check_state: 'waiting_check', last_error: why || null });
-        break; // no quota / Gemini busy: stop for now
+        break; // no quota / AI busy / AI not set up: stop for now
       }
       await d.pull();
       await d.repos.scanQueue.update(row.id, { check_state: 'checked', last_error: null });

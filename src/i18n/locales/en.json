@@ -251,13 +251,13 @@
     "deleteBody": "The photo is deleted from your phone and from the server.",
     "checkedAt": "Checked {{date}}",
     "modelVersion": "On-device model {{version}}",
-    "cloudModel": "Online check by Google Gemini",
+    "cloudModel": "Online check by Groq (AI service)",
     "sampleResult": "Sample result (demo mode)",
     "unknownCause": "Something not in our list",
     "consent": {
       "title": "Online leaf check",
-      "body1": "To check your photo online, it is sent to Google Gemini (an AI service).",
-      "body2": "On the free service, Google may use photos to improve its products and people at Google may look at them.",
+      "body1": "To check your photo online, it is sent to Groq, an AI company based in the USA.",
+      "body2": "Groq uses the photo to answer the check, under its own privacy policy. Send only photos you are happy for an outside company to see.",
       "body3": "Photograph only the leaf. No faces, papers, number plates or anything personal.",
       "body4": "We send only the crop, its stage, your district and recent weather. Never your name, phone number, email or exact location.",
       "adult": "I am 18 or older",
@@ -701,7 +701,7 @@
     "model": "Leaf scan training data",
     "modelBody": "The on-device leaf model is trained on openly licensed (CC BY 4.0) images from Mendeley Data: Wheat Leaf Dataset (Holeta, Ethiopia); Wheat nitrogen deficiency and leaf rust dataset (IARI, India); Wheat Rust Images For Diseases Map; Rice Leaf Disease Image Samples (Sethy et al.); Rice Leaf Bacterial and Fungal Disease Dataset; RiceLeafBD; RiceLeafDiseaseBD; Cotton Crop plant leaves Data set (Shaheed Benazirabad, Pakistan); CoSEV. Non-leaf photos: Open Images V7 (CC BY 2.0).",
     "ai": "Online leaf check",
-    "aiBody": "Online checks use Google Gemini. Treatment advice comes only from official advisories, never from the AI.",
+    "aiBody": "Online checks use Groq (an AI service). Treatment advice comes only from official advisories, never from the AI.",
     "disclaimer": "KisanConnect gives guidance only. Always confirm with an agriculture expert before using any chemical."
   }
 }

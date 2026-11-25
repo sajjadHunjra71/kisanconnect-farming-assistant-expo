@@ -11,7 +11,7 @@ import { formatDate, localDay } from '@/features/farm/format';
 import { useRepoQuery } from '@/features/farm/hooks';
 import { BulletList, LikelihoodMeter } from '@/features/scan/components';
 import { localScanPhoto } from '@/features/scan/photo';
-import { deleteScan, retryScan } from '@/features/scan/scan-service';
+import { deleteScan, hasAiConsent, retryScan } from '@/features/scan/scan-service';
 import { useLocalized } from '@/hooks/use-localized';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
@@ -73,6 +73,11 @@ export default function ScanResultScreen() {
 
   const retry = async () => {
     if (!repos) return;
+    // Consent changed (or was withdrawn): ask again first; the consent screen comes back here.
+    if (!isSample && owner !== 'demo' && !hasAiConsent(useAuthStore.getState().profile)) {
+      router.push('/scan/consent');
+      return;
+    }
     setBusy(true);
     await retryScan(repos, scan.id);
     await requestSync('full');
