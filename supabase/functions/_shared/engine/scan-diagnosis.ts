@@ -270,3 +270,29 @@ export function clearerPhotoDiagnosis(): AiDiagnosis {
     needs_expert: true,
   };
 }
+
+/* ── On-device result sent by the phone ─────────────────── */
+
+/**
+ * model_result is written by the phone, so the server treats it as untrusted: only this
+ * crop's KB ids, probabilities in 0–1, at most 3 entries, and a threshold that can make the
+ * rules stricter but never looser than the default. Nothing else reaches the prompt or the
+ * combine rules.
+ */
+export function sanitizeModelResult(raw: unknown, crop: CropId): { top: ModelTop | null; threshold: number } {
+  const r = raw && typeof raw === 'object' ? (raw as { top?: unknown; threshold?: unknown }) : {};
+  const ids = new Set(kbIdsForCrop(crop));
+  const top: ModelTop = [];
+  if (Array.isArray(r.top)) {
+    for (const t of r.top) {
+      const e = t as { id?: unknown; p?: unknown } | null;
+      if (!e || typeof e.id !== 'string' || !ids.has(e.id) || typeof e.p !== 'number' || !Number.isFinite(e.p)) continue;
+      if (top.some((x) => x.id === e.id)) continue;
+      top.push({ id: e.id, p: Math.min(1, Math.max(0, e.p)) });
+      if (top.length === 3) break;
+    }
+  }
+  top.sort((a, b) => b.p - a.p);
+  const th = typeof r.threshold === 'number' && Number.isFinite(r.threshold) ? r.threshold : DEFAULT_MODEL_THRESHOLD;
+  return { top: top.length ? top : null, threshold: Math.min(0.99, Math.max(DEFAULT_MODEL_THRESHOLD, th)) };
+}

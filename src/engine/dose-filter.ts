@@ -76,14 +76,28 @@ const CHEMICAL = new RegExp(
   'i',
 );
 
+/** Spelled-out amounts: "two litres", "half a bottle", "one and a half kg". */
+const WORD_AMOUNT =
+  /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|half|quarter|dozen)\b(?:\s+(?:and|a|an|of))*\s+(?:ml|millilit(?:er|re)s?|lit(?:er|re)s?|ltr|grams?|kg|kilos?|kilograms?|ounces?|percent|tablets?|sachets?|packets?|bags?|bottles?|tola|maunds?|mann|spoons?|teaspoons?|tablespoons?|cups?|caps?|capfuls?)\b/i;
+
+/**
+ * Text we ask for is simple English. Anything in another script (Urdu, Arabic, Hindi,
+ * Punjabi…) can't be checked by the English rules, so it is never shown as AI text.
+ * Allowed: Latin letters, digits, common punctuation and symbols.
+ */
+const NON_LATIN = /[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F\u20A0-\u20CF\u2100-\u214F\u2190-\u21FF]/;
+/** Invisible characters that could split a word ("spr\u200bay") to slip past the rules. */
+const INVISIBLE = /[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF]/g;
+
 export function looksLikeTreatment(text: string): boolean {
-  return AMOUNT_UNIT.test(text) || RATE.test(text) || CHEMICAL.test(text);
+  return AMOUNT_UNIT.test(text) || RATE.test(text) || CHEMICAL.test(text) || WORD_AMOUNT.test(text) || NON_LATIN.test(text);
 }
 
 /** Trim, cap and filter one AI string. Empty/missing → null. */
 export function filterAiText(text: unknown, max = MAX_AI_TEXT): string | null {
   if (typeof text !== 'string') return null;
-  const t = text.replace(/\s+/g, ' ').trim();
+  // NFKC turns full-width / styled letters and digits ("２５０ｍｌ", "𝐬𝐩𝐫𝐚𝐲") into plain ones.
+  const t = text.normalize('NFKC').replace(INVISIBLE, '').replace(/\s+/g, ' ').trim();
   if (!t) return null;
   if (looksLikeTreatment(t)) return REPLACEMENT;
   return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;

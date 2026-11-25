@@ -39,4 +39,24 @@ describe('dose filter', () => {
     expect(filterAiList(['Spray X', 'Use 2 kg', 'Check leaves', '', 7, 'Ask expert', 'a', 'b'], 4)).toEqual([REPLACEMENT, 'Check leaves', 'Ask expert', 'a']);
     expect(filterAiList('nope')).toEqual([]);
   });
+
+  it.each([
+    ['spelled-out amount', 'Mix two litres in the tank'],
+    ['half a bottle', 'Use half a bottle on the field'],
+    ['Urdu script', 'دوائی کا سپرے کریں'],
+    ['Urdu digits + unit', '۲۵۰ ملی لیٹر'],
+    ['Hindi script', 'दवा छिड़कें'],
+    ['zero-width split word', 'spr\u200bay the crop now'],
+    ['full-width amount', 'Use ２５０ｍｌ'],
+    ['styled letters', 'Use a 𝐟𝐮𝐧𝐠𝐢𝐜𝐢𝐝𝐞 today'],
+  ])('blocks %s', (_name, text) => {
+    expect(filterAiText(text)).toBe(REPLACEMENT);
+  });
+
+  it.each(['Rain on 2 days — check again in a week.', 'Leaves 5–7 cm long, 25°C “typical” signs', 'Check one or two plants in each corner'])(
+    'still keeps normal English: %s',
+    (text) => {
+      expect(filterAiText(text)).toBe(text);
+    },
+  );
 });

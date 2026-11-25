@@ -27,12 +27,28 @@ Deno.serve(async (req) => {
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
   // Remove the user's leaf photos first (storage files are not deleted by the cascade).
+  // Sub-folders are followed too, so nothing the user uploaded is left behind.
   const photos = admin.storage.from('scan-photos');
+  const listAll = async (prefix: string, depth: number): Promise<string[] | null> => {
+    const { data: entries, error: listError } = await photos.list(prefix, { limit: 1000 });
+    if (listError) return null;
+    const out: string[] = [];
+    for (const e of entries ?? []) {
+      const path = `${prefix}/${e.name}`;
+      if (e.id === null) {
+        if (depth >= 4) continue;
+        const sub = await listAll(path, depth + 1);
+        if (!sub) return null;
+        out.push(...sub);
+      } else out.push(path);
+    }
+    return out;
+  };
   for (let round = 0; round < 50; round++) {
-    const { data: files, error: listError } = await photos.list(data.user.id, { limit: 1000 });
-    if (listError) return json({ error: 'photo_cleanup_failed' }, 500);
-    if (!files?.length) break;
-    const { error: rmError } = await photos.remove(files.map((f) => `${data.user.id}/${f.name}`));
+    const files = await listAll(data.user.id, 0);
+    if (!files) return json({ error: 'photo_cleanup_failed' }, 500);
+    if (!files.length) break;
+    const { error: rmError } = await photos.remove(files.slice(0, 1000));
     if (rmError) return json({ error: 'photo_cleanup_failed' }, 500);
   }
 

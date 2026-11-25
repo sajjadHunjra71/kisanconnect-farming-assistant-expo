@@ -65,16 +65,28 @@ code("""
 # 3. Download from Mendeley Data (public API). Failures are skipped and reported.
 REPORT_NOTES = []
 
+def safe_names(names, dest):
+    # Refuse archives with absolute paths or '..' that would write outside dest.
+    root = dest.resolve()
+    for n in names:
+        target = (dest / n).resolve()
+        if not (target == root or root in target.parents):
+            raise ValueError(f'unsafe path in archive: {n!r}')
+
 def extract(path, dest):
     dest.mkdir(parents=True, exist_ok=True)
     name = path.name.lower()
     if name.endswith('.zip'):
-        with zipfile.ZipFile(path) as z: z.extractall(dest)
+        with zipfile.ZipFile(path) as z:
+            safe_names(z.namelist(), dest); z.extractall(dest)
     elif name.endswith('.rar'):
-        import rarfile; rarfile.RarFile(path).extractall(dest)
+        import rarfile
+        with rarfile.RarFile(path) as z:
+            safe_names(z.namelist(), dest); z.extractall(dest)
     elif name.endswith('.7z'):
         import py7zr
-        with py7zr.SevenZipFile(path) as z: z.extractall(dest)
+        with py7zr.SevenZipFile(path) as z:
+            safe_names(z.getnames(), dest); z.extractall(dest)
     else:
         return False
     return True

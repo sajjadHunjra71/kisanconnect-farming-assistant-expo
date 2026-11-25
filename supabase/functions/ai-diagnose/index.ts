@@ -36,7 +36,6 @@ import { cropProgress } from '../_shared/engine/crop-calendar.ts';
 import type { CropId } from '../_shared/engine/crops-data.ts';
 import {
   AI_CONSENT_VERSION,
-  DEFAULT_MODEL_THRESHOLD,
   DIAGNOSIS_SYSTEM,
   buildDiagnosisPrompt,
   classifyAiError,
@@ -45,6 +44,7 @@ import {
   isModelOutputReason,
   parseModelJson,
   retryDelayMs,
+  sanitizeModelResult,
   sanitizeDiagnosis,
   weatherSummary7d,
   type AiDiagnosis,
@@ -185,8 +185,8 @@ Deno.serve(async (req) => {
     else failReason = res.reason;
   }
 
-  const modelTop = scan.model_result?.top ?? null;
-  const threshold = scan.model_result?.threshold ?? DEFAULT_MODEL_THRESHOLD;
+  // model_result comes from the phone: only allow-listed ids / clamped numbers are used.
+  const { top: modelTop, threshold } = sanitizeModelResult(scan.model_result, scan.crop_key);
   const now = new Date().toISOString();
   const update = diagnosis
     ? (() => {
@@ -235,7 +235,7 @@ async function loadContext(userClient: SupabaseClient, admin: SupabaseClient, sc
       if (f) weather = weatherSummary7d(f, localHour(f, new Date()).slice(0, 10));
     }
   }
-  return { stage, district, weather, modelTop: scan.model_result?.top ?? null };
+  return { stage, district, weather, modelTop: sanitizeModelResult(scan.model_result, scan.crop_key).top };
 }
 
 /* ── Cloud model (Groq) ─────────────────────────────────── */
