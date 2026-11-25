@@ -216,8 +216,8 @@ export function combineResults(model: ModelTop | null, ai: AiDiagnosis | null, t
 /**
  * What a non-2xx Gemini answer means for the scan:
  *  - busy:   429 / 503 → try later, quota refunded
- *  - setup:  bad / restricted / blocked key, API not enabled, unknown model (400 API_KEY_INVALID,
- *            401, 403, 404) → the server is misconfigured; the scan must NOT be marked failed,
+ *  - setup:  bad / restricted / blocked key, API not enabled, billing / region, unknown model
+ *            (400 API_KEY_INVALID or FAILED_PRECONDITION, 401, 403, 404) → the server is misconfigured; the scan must NOT be marked failed,
  *            it waits until the setup is fixed
  *  - server: other 5xx → try later
  *  - invalid: anything else (a request Gemini rejects) → counts as a failed check
@@ -233,7 +233,35 @@ export function classifyGeminiError(httpStatus: number, body: unknown): { kind: 
   const reason = [`http_${httpStatus}`, status, detail].filter(Boolean).join(':');
   if (httpStatus === 429 || httpStatus === 503) return { kind: 'busy', reason };
   if (httpStatus === 401 || httpStatus === 403 || httpStatus === 404) return { kind: 'setup', reason };
-  if (httpStatus === 400 && /API_KEY|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED/.test(`${status}:${detail}`)) return { kind: 'setup', reason };
+  // 400 key errors, and FAILED_PRECONDITION (billing / region not enabled for the project)
+  if (httpStatus === 400 && /API_KEY|SERVICE_DISABLED|BILLING|FAILED_PRECONDITION/.test(`${status}:${detail}`)) return { kind: 'setup', reason };
   if (httpStatus >= 500) return { kind: 'server', reason };
   return { kind: 'invalid', reason };
+}
+
+/* ── Unusable model output ──────────────────────────────── */
+
+/** Reasons that mean Gemini answered, but not with something we can use. */
+export const MODEL_OUTPUT_REASONS = ['empty_answer', 'not_json', 'bad_shape', 'unusable_answer'] as const;
+
+export function isModelOutputReason(reason: string): boolean {
+  return (MODEL_OUTPUT_REASONS as readonly string[]).includes(reason);
+}
+
+/**
+ * Stored when the model answered twice without a usable diagnosis: an honest "unclear"
+ * result that tells the farmer what to do, instead of a dead-end "failed".
+ */
+export function clearerPhotoDiagnosis(): AiDiagnosis {
+  return {
+    status: 'unclear',
+    possible_causes: [],
+    questions_to_confirm: [],
+    next_steps: [
+      'Take a clearer photo: one leaf filling the frame, in daylight, held steady.',
+      'Scan again, or ask an agriculture expert to look at the plant.',
+    ],
+    explain: 'The online check could not read this photo clearly.',
+    needs_expert: true,
+  };
 }

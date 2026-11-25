@@ -11,7 +11,11 @@
 //     Phase 3 cache, on-device top-3. Never the user's name, email, GPS or farm name.
 //  5. Gemini JSON mode with responseSchema (id enum = this crop's KB ids + "unknown"),
 //     Zod shape check + engine sanitizer (dose filter, caps). One retry (one more global
-//     unit), then final_status "failed".
+//     unit). Still no usable answer → final_status "unclear" with "take a clearer photo"
+//     steps; Gemini rejecting the request itself → "failed". Either way ai_result.reason
+//     holds a short code. Key / API / model setup errors (400 API_KEY_*, 401, 403, 404)
+//     never fail a scan: quota refunded, 202 waiting (reason "ai_unavailable").
+//     A "failed" scan may be checked again ("Try again").
 //  6. Server-only columns written with the service role; ai_events gets one row
 //     (no photo, no prompt).
 //
@@ -29,7 +33,9 @@ import {
   DIAGNOSIS_SYSTEM,
   buildDiagnosisPrompt,
   classifyGeminiError,
+  clearerPhotoDiagnosis,
   combineResults,
+  isModelOutputReason,
   diagnosisResponseSchema,
   sanitizeDiagnosis,
   weatherSummary7d,
@@ -178,7 +184,11 @@ Deno.serve(async (req) => {
           checked_at: now,
         };
       })()
-    : { ai_result: { error: 'invalid_answer', reason: failReason, model }, final_status: 'failed', top_disease_id: null, needs_expert_ai: true, checked_at: now };
+    : isModelOutputReason(failReason)
+      ? // Gemini answered twice but not usably: an honest "unclear" with what to do next.
+        { ai_result: { ...clearerPhotoDiagnosis(), model, reason: failReason }, final_status: 'unclear', top_disease_id: null, needs_expert_ai: true, checked_at: now }
+      : // Gemini rejected our request (not a setup error): failed, with a short reason code.
+        { ai_result: { error: 'invalid_answer', reason: failReason, model }, final_status: 'failed', top_disease_id: null, needs_expert_ai: true, checked_at: now };
 
   const { error: upError } = await admin.from('scans').update(update).eq('id', scan.id).eq('user_id', user.id);
   await logEvent(admin, user.id, model, meta, Date.now() - started, diagnosis ? (globalUnits > 1 ? 'retry_ok' : 'ok') : `invalid:${failReason}`);

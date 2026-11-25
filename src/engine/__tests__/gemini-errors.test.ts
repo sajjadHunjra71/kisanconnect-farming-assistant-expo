@@ -8,6 +8,8 @@ describe('classifyGeminiError', () => {
     expect(classifyGeminiError(400, { error: { status: 'INVALID_ARGUMENT', details: [{ reason: 'API_KEY_INVALID' }] } }).kind).toBe('setup');
     expect(classifyGeminiError(404, { error: { status: 'NOT_FOUND' } }).kind).toBe('setup');
     expect(classifyGeminiError(401, null).kind).toBe('setup');
+    expect(classifyGeminiError(400, { error: { status: 'FAILED_PRECONDITION' } }).kind).toBe('setup'); // billing / region
+    expect(classifyGeminiError(403, { error: { status: 'PERMISSION_DENIED', details: [{ reason: 'BILLING_DISABLED' }] } }).kind).toBe('setup');
   });
 
   it('busy, server and invalid', () => {
@@ -19,5 +21,18 @@ describe('classifyGeminiError', () => {
 
   it('never copies the error message (could echo request content)', () => {
     expect(classifyGeminiError(400, { error: { status: 'INVALID_ARGUMENT', message: 'secret prompt text' } }).reason).not.toContain('secret');
+  });
+});
+
+describe('unusable model output', () => {
+  it('gives an unclear result with safe next steps', () => {
+    const { clearerPhotoDiagnosis, isModelOutputReason, filterAiList } = jest.requireActual('../index');
+    const d = clearerPhotoDiagnosis();
+    expect(d.status).toBe('unclear');
+    expect(d.possible_causes).toEqual([]);
+    expect(d.needs_expert).toBe(true);
+    expect(filterAiList(d.next_steps)).toEqual(d.next_steps); // passes the dose filter untouched
+    expect(isModelOutputReason('not_json')).toBe(true);
+    expect(isModelOutputReason('http_400:INVALID_ARGUMENT')).toBe(false);
   });
 });
